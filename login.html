@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ingresar • E&S</title>
+
+  <!-- Fuentes / Iconos -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=swap" rel="stylesheet">
+
+  <style>
+    :root{ --brand:#7a4545; --bg:#1f262c; }
+    *{ box-sizing:border-box }
+    body{
+      margin:0; min-height:100svh; display:grid; place-items:center;
+      font-family:Poppins, system-ui, sans-serif;
+      background:
+        radial-gradient(1200px 700px at 80% -10%, #7a454520 0%, transparent 60%),
+        radial-gradient(900px 600px at -10% 100%, #7a454533 0%, transparent 60%),
+        var(--bg);
+    }
+    /* botón volver */
+    .top-nav{ position:fixed; top:16px; left:16px; }
+    .top-nav a{
+      color:#fff; text-decoration:none; padding:8px 12px; border-radius:999px;
+      background:#00000033; border:1px solid #ffffff26; backdrop-filter:blur(8px)
+    }
+    .top-nav a:hover{ background:#00000055 }
+
+    .card{
+      width:min(420px, 92vw);
+      background:rgba(255,255,255,.92);
+      backdrop-filter:blur(10px);
+      border:1px solid #ffffff40;
+      border-radius:20px; overflow:hidden;
+      box-shadow:0 20px 60px rgba(0,0,0,.25);
+    }
+    .head{ padding:28px 28px 8px; text-align:center }
+    .brand{
+      font-family:Verdana, Geneva, Tahoma, sans-serif;
+      font-size:40px; font-weight:700; letter-spacing:.08em; color:var(--brand)
+    }
+    .title{ margin:6px 0 0; font-size:18px; font-weight:600; color:#111 }
+
+    .body{ padding:20px 28px 24px }
+    .row{
+      display:flex; gap:10px; align-items:center;
+      background:#f3f4f6; border-radius:12px; padding:10px 12px; border:1px solid #e7e7e7;
+    }
+    .row:focus-within{ outline:2px solid var(--brand); outline-offset:2px }
+    .row input{
+      border:0; background:transparent; width:100%; font-size:15px; padding:6px 2px; outline:0;
+    }
+    .row .material-symbols-outlined{ font-size:22px; color:#7b7b7b }
+    .eye{ cursor:pointer; user-select:none }
+
+    .actions{
+      display:flex; justify-content:space-between; align-items:center;
+      margin:12px 2px 18px; font-size:13px;
+    }
+    .actions label{ display:flex; gap:8px; align-items:center; user-select:none }
+
+    .btn{
+      display:inline-flex; gap:8px; justify-content:center; align-items:center;
+      width:100%; height:48px; border-radius:12px; border:0; cursor:pointer;
+      background:var(--brand); color:#fff; font-weight:700; letter-spacing:.02em;
+    }
+    .btn:hover{ filter:brightness(.95) }
+
+    .muted{ font-size:12.5px; color:#6b7280; text-align:center; margin-top:12px }
+    .muted a{ color:var(--brand); text-decoration:none; font-weight:600 }
+
+    .error{
+      display:none; background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;
+      padding:8px 10px; border-radius:10px; font-size:13px; margin:10px 2px 0;
+    }
+
+    @media (max-width:420px){ .brand{ font-size:34px } }
+  </style>
+</head>
+<body>
+  <div class="top-nav"><a href="index.html">← Volver</a></div>
+
+  <section class="card" role="dialog" aria-labelledby="login-title">
+    <header class="head">
+      <div class="brand">E&amp;S</div>
+      <h1 id="login-title" class="title">Iniciá sesión</h1>
+    </header>
+
+    <form class="body" id="loginForm" novalidate>
+      <div class="error" id="errorBox">Correo o contraseña incorrectos.</div>
+
+      <div class="row" style="margin-top:8px;">
+        <span class="material-symbols-outlined">mail</span>
+        <input type="email" id="email" name="email" placeholder="Correo electrónico" autocomplete="email" required>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <span class="material-symbols-outlined">lock</span>
+        <input type="password" id="password" name="password" placeholder="Contraseña" autocomplete="current-password" required minlength="6">
+        <span id="togglePass" class="material-symbols-outlined eye" aria-label="Mostrar u ocultar contraseña">visibility</span>
+      </div>
+
+      <div class="actions">
+        <label><input type="checkbox" id="remember"> Recuérdame</label>
+        <a href="#" style="color:#7a4545; text-decoration:none">¿Olvidaste tu contraseña?</a>
+      </div>
+
+      <button class="btn" type="submit">
+        <span class="material-symbols-outlined">login</span> Entrar
+      </button>
+
+      <p class="muted">¿No tenés cuenta?
+        <a href="#" onclick="alert('Registro próximamente 😊');return false;">Crear cuenta</a>
+      </p>
+    </form>
+  </section>
+
+  <script>
+    // Mostrar/ocultar contraseña
+    const pass   = document.getElementById('password');
+    const toggle = document.getElementById('togglePass');
+    toggle.addEventListener('click', () => {
+      const show = pass.type === 'password';
+      pass.type = show ? 'text' : 'password';
+      toggle.textContent = show ? 'visibility_off' : 'visibility';
+    });
+
+    // Validación mínima (reemplazá por tu backend)
+    const form = document.getElementById('loginForm');
+    const errorBox = document.getElementById('errorBox');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      errorBox.style.display = 'none';
+
+      const email = form.email.value.trim();
+      const password = form.password.value.trim();
+
+      if (!email || !password) {
+        errorBox.textContent = 'Completá correo y contraseña.';
+        errorBox.style.display = 'block';
+        return;
+      }
+
+      // Ejemplo: guardar email y volver al home
+      // (En producción: hacé fetch a tu PHP y redirigí si responde OK)
+      localStorage.setItem('userEmail', email);
+      window.location.href = 'index.html';
+    });
+  </script>
+</body>
+</html>

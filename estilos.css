@@ -1,174 +1,91 @@
-/* Layout base */
-.header{background:#ffffff; border-bottom:1px solid #eee}
-.container{max-width:1200px; margin:0 auto; padding:0 16px}
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background:#1f262c; }
 
-/* Barra: 3 zonas (izq | centro | der) */
+.container{ max-width:1200px; margin:0 auto; padding:0 16px; }
+
+/* Header */
+.header{ background:#fff; border-bottom:1px solid #eee; }
 .nav{
   display:grid;
-  grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
   align-items:center; gap:16px; padding:12px 0;
 }
-
-/* Logo centrado siempre */
-.logo{
-  justify-self:center;
-  font-size:56px; line-height:1;
-  font-family:Verdana, Geneva, Tahoma, sans-serif;
-  color:#7d3d36; text-decoration:none; letter-spacing:.04em;
-}
-
-/* IZQUIERDA: dropdown Mujer */
-.links{display:flex; gap:20px; align-items:center}
-.dd{position:relative}
-.dd > summary{
-  list-style:none; cursor:pointer; font-weight:700; color:#111;
-}
-.dd > summary::-webkit-details-marker{display:none} /* oculta triangulito */
-
-/* Panel desplegable */
+.logo{ justify-self:center; font-size:56px; line-height:1; font-family:Verdana, Geneva, Tahoma, sans-serif; color:#7d3d36; text-decoration:none; letter-spacing:.04em; }
+.links{ display:flex; gap:20px; align-items:center; }
+.dd{ position:relative; }
+.dd > summary{ list-style:none; cursor:pointer; font-weight:700; color:#111; }
+.dd > summary::-webkit-details-marker{ display:none; }
 .dd-panel{
-  position:absolute; top:100%; left:0;
-  display:none; background:#fff; padding:14px; margin-top:8px;
-  border:1px solid #ddd; box-shadow:0 8px 20px rgba(0,0,0,.08);
-  display:grid; grid-template-columns: repeat(3, minmax(140px,1fr)); gap:18px;
-  z-index:10;
+  position:absolute; top:100%; left:0; margin-top:8px; background:#fff; padding:14px; border:1px solid #ddd;
+  box-shadow:0 8px 20px rgba(0,0,0,.08);
+  display:grid; grid-template-columns:repeat(4, minmax(140px,1fr)); gap:18px; z-index:10;
 }
-.dd[open] .dd-panel{display:grid}              /* abre al hacer click */
-.dd:focus-within .dd-panel{display:grid}       /* accesible con teclado */
+.dd-panel a{ display:block; padding:6px 0; color:#000; text-decoration:none; }
+.dd-panel a:hover{ background:#f7f7f7; }
 
-.dd-panel h4{margin:0 0 8px; font-size:14px; color:#555; text-transform:uppercase; letter-spacing:.06em}
-.dd-panel a{display:block; padding:6px 0; color:#000000; text-decoration:none}
-.dd-panel a:hover{background:#f7f7f7}
+.icons{ grid-column:3/4; justify-self:end; display:flex; align-items:center; gap:12px; }
+.icon-btn{ position:relative; width:36px; height:36px; display:inline-flex; justify-content:center; align-items:center; background:transparent; border:0; color:#000; cursor:pointer; }
+.icon-btn .badge{ position:absolute; top:-6px; right:-6px; min-width:18px; height:18px; padding:0 6px; display:grid; place-items:center; background:#000; color:#fff; border-radius:999px; font-size:11px; line-height:1; }
 
-/* DERECHA: iconos */
-.icons{
-    grid-column: 3/4;
-    justify-self: end;
-  display: flex !important;
-  flex-direction: row !important; /* que sea fila */
-  align-items: center;
-  gap: 12px;
-  flex-wrap: nowrap;              /* NO permitir salto a otra línea */
-}
+/* Carrusel */
+.hero { margin:12px auto; }
+.carousel-item img{ width:100%; height:300px; object-fit:cover; display:block; border-radius:12px; }
 
-.icons > *{ flex: 0 0 auto; }     /* que ninguno estire/rompa la fila */
-
-/* Cada botón: tamaño fijo y en línea */
-.icon-btn{
-  position: relative;             /* para el badge */
-  display: inline-flex;           /* evita que se apilen como bloques */
-  justify-content: center;
-  align-items: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  color: #000;
-}
-
-/* Badge pegado al botón */
-.icon-btn .badge{
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 6px;
-  display: grid;
-  place-items: center;
-  background:#000; color:#ffffff; border-radius:999px;
-  font-size:11px; line-height:1;
-}
-/* -------- ajustes por breakpoints -------- */
-@media (max-width: 768px){
-  .container{ padding: 0 12px; }              /* un poco menos de padding general */
-  .logo{ font-size: clamp(28px, 8vw, 40px); } /* el logo también reduce */
-}
-
-@media (max-width: 480px){
-  .icons{ gap: 8px; }                         /* aún menos espacio entre iconos */
-  .icon-btn{ padding: 4px; }
-  .badge{ transform: translate(40%, -55%); }
-}
-
-/* (opcional) en pantallas muy chicas, ocultar un icono para que no se amontonen.
-   Agregá clase a tu HTML, por ejemplo: <button class="icon-btn fav">…</button> */
-@media (max-width: 360px){
-  .icons .fav{ display:none; }                /* oculta Favoritos en XS */
-}
-
-
-
-/* Responsive */
-@media (max-width: 768px){
-  .logo{font-size:40px}
-  .dd-panel{grid-template-columns:1fr; min-width:220px}
-}
+/* Grid de productos */
 .product-container{
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: clamp(12px, 2vw, 20px);
-  justify-items: stretch;
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  justify-items:center;
+  padding: 12px 0 40px;
 }
 
-/* tarjeta flexible (sin width/height fijos) */
+/* Card */
 .product{
-  background:#fff;
-  font-family: Verdana, Geneva, Tahoma, sans-serif;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  /* quitamos height/width fijas */
+  background:#fff; color:#111; border-radius:12px; overflow:hidden;
+  display:flex; flex-direction:column; width:100%; max-width:240px;
 }
-
-/* imagen proporcionada: no se deforma */
 .product img{
-  width: 100%;
-  aspect-ratio: 3 / 4;      /* alto = 4/3 del ancho */
-  object-fit: cover;        /* recorta, no estira */
-  display: block;
+  width:100%; aspect-ratio:3/4; object-fit:cover; display:block; background:#f6f6f6;
+  cursor:pointer; /* <- para que se note que abre detalle */
 }
-
-/* contenido */
-.product h2{
-  margin: 10px 12px 6px;
-  color:#000;
-  font-size: clamp(14px, 1.8vw, 16px);  /* tipografía fluida */
-  text-align: left;
-}
-
-.product p{
-    text-align: center;
-  margin: 0 12px 12px;
-  font-size: 14px;
-  color:#000;
-  text-align: right;        /* en vez de left + posiciones */
-  /* quitamos position/left */
-}
-
-/* botón al 100% del ancho de la card */
+.product .meta{ display:flex; gap:12px; align-items:flex-start; justify-content:space-between; padding:10px 12px 0; }
+.product .meta h2{ margin:0; flex:1; min-height:2.6em; font-size:clamp(14px,1.8vw,16px); }
+.product .meta .price{ margin:0; white-space:nowrap; font-weight:600; }
 .product button{
-  height: 44px;
-  width: 100%;
-  border: none;
-  background:#7a4545;
-  color:#fff;
-  font: 600 14px/1 Verdana, Geneva, Tahoma, sans-serif;
-  cursor: pointer;
+  margin-top:auto; height:48px; width:100%; border:0; background:#7a4545; color:#fff;
+  font:600 14px/1 Verdana, Geneva, Tahoma, sans-serif;
+  border-top:1px solid #00000010; border-bottom-left-radius:12px; border-bottom-right-radius:12px; cursor:pointer;
 }
+.product button:hover{ filter:brightness(.95); }
 
-/* ajustes por breakpoint (opcionales) */
-@media (min-width: 768px){
-  .product-container{
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  }
-}
+/* Mini-carrito */
+.cart-head{ background: linear-gradient(120deg, #7a4545 0%, #9b5a5a 60%, #b06b6b 100%); }
+.cart-thumb{ width:64px; height:64px; object-fit:cover; border-radius:10px; background:#f3f4f6; }
 
-@media (min-width: 1200px){
-  .product-container{
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  }
-}
+/* Detalle de producto */
+.pd-body{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+.pd-img{ width:100%; aspect-ratio:3/4; object-fit:cover; border-radius:12px; background:#f3f4f6; }
+.pd-name{ margin:0 0 4px; font:700 18px/1.2 system-ui, sans-serif; }
+.pd-price{ margin:0 0 10px; font-weight:700; }
+.pd-row{ display:flex; gap:8px; align-items:flex-start; margin:8px 0; }
+.pd-label{ width:64px; color:#6b7280; font-size:13px; padding-top:6px; }
+.pd-sizes{ display:flex; flex-wrap:wrap; gap:8px; }
+.size-btn{ min-width:38px; height:38px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; cursor:pointer; padding:0 10px; }
+.size-btn.is-selected{ border-color:#7a4545; background:#7a4545; color:#fff; }
+.pd-colors{ display:flex; flex-wrap:wrap; gap:8px; }
+.color-chip{ display:inline-flex; gap:6px; align-items:center; padding:6px 10px; border:1px solid #e5e7eb; border-radius:999px; background:#fff; cursor:pointer; font-size:13px; }
+.color-chip .dot{ width:14px; height:14px; border-radius:50%; border:1px solid #ddd; }
+.color-chip.is-selected{ border-color:#7a4545; box-shadow:0 0 0 2px #7a454533 inset; }
+
+/* Galería */
+.pd-thumbs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.pd-thumb{ width:64px; height:64px; object-fit:cover; border-radius:8px; background:#f3f4f6; cursor:pointer; border:1px solid #e5e7eb; }
+.pd-thumb.is-active{ outline:2px solid #7a4545; outline-offset:2px; }
+
+@media (max-width:640px){ .pd-body{ grid-template-columns: 1fr; } }
+
+
+
+

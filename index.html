@@ -1,13 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-<link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="estilos.css">
-    <title>E&S</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E&S</title>
+
+  <!-- UI / Iconos -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" />
+
+  <!-- Estilos / App -->
+  <link rel="stylesheet" href="estilos.css" />
+  <script src="script.js" defer></script>
 </head>
 <body>
 
@@ -15,27 +20,32 @@
   <div class="container nav">
     <!-- IZQUIERDA: menú -->
     <nav class="links" aria-label="Principal">
-      <!-- Dropdown simple -->
-      <details class="dd">
+      <details class="dd" id="menuMujer">
         <summary>Mujer</summary>
-        <div class="dd-panel">
+        <div class="dd-panel" role="menu">
           <div class="col">
             <h4>Categorías</h4>
-            <a href="#remeras">Remeras</a>
-            <a href="#pantalones">Pantalones</a>
-            <a href="#vestidos">Vestidos</a>
+            <a href="#" data-kind="remeras">Remeras</a>
+            <a href="#" data-kind="pantalones">Pantalones</a>
+            <a href="#" data-kind="vestidos">Vestidos</a>
           </div>
           <div class="col">
             <h4>Talles</h4>
-            <a href="#xs">XS</a>
-            <a href="#s">S</a>
-            <a href="#m">M</a>
+            <a href="#" data-size="XS">XS</a>
+            <a href="#" data-size="S">S</a>
+            <a href="#" data-size="M">M</a>
+            <a href="#" data-size="L">L</a>
           </div>
           <div class="col">
             <h4>Colores</h4>
-            <a href="#negro">Negro</a>
-            <a href="#blanco">Blanco</a>
-            <a href="#rojo">Rojo</a>
+            <a href="#" data-color="negro">Negro</a>
+            <a href="#" data-color="blanco">Blanco</a>
+            <a href="#" data-color="rojo">Rojo</a>
+            <a href="#" data-color="celeste">Celeste</a>
+          </div>
+          <div class="col">
+            <h4>&nbsp;</h4>
+            <a href="#" data-clear="1">Limpiar filtros</a>
           </div>
         </div>
       </details>
@@ -46,130 +56,156 @@
 
     <!-- DERECHA: iconos -->
     <div class="icons">
-  <button class="icon-btn" aria-label="Cuenta">
-    <span class="material-symbols-outlined">person</span>
-  </button>
-
-  <!-- SIN bag-wrap, el badge va dentro del botón -->
-  <button class="icon-btn bag" aria-label="Carrito">
-    <span class="material-symbols-outlined">shopping_bag</span>
-    <span class="badge" id="bagCount">0</span>
-  </button>
-</div>
+      <button class="icon-btn" aria-label="Cuenta">
+        <a href="cliente_login.php" aria-label="Ir a iniciar sesión">
+          <span class="material-symbols-outlined">person</span>
+        </a>
+      </button>
+      <button class="icon-btn bag" aria-label="Carrito">
+        <span class="material-symbols-outlined">shopping_bag</span>
+        <span class="badge" id="bagCount">0</span>
+      </button>
+    </div>
+  </div>
 </header>
 
-<div class="carousel rounded-box">
- 
- 
-  <div class="carousel-item">
-    <img
-      src="modelo2.jpeg"
-      alt="img2" />
+<!-- CARRUSEL -->
+<section class="container hero">
+  <div class="carousel rounded-box">
+    <div class="carousel-item"><img src="modelo1.jpeg" alt="modelo 1" /></div>
+    <div class="carousel-item"><img src="modelo2.jpeg" alt="modelo 2" /></div>
+    <div class="carousel-item"><img src="modelo3.jpeg" alt="modelo 3" /></div>
+    <div class="carousel-item"><img src="modelo4.jpeg" alt="modelo 4" /></div>
+    <div class="carousel-item"><img src="modelo5.jpeg" alt="modelo 5" /></div>
+    <div class="carousel-item"><img src="modelo6.jpeg" alt="modelo 6" /></div>
+    <div class="carousel-item"><img src="modelo7.jpeg" alt="modelo 7" /></div>
+    <div class="carousel-item"><img src="modelo8.jpeg" alt="modelo 8" /></div>
+    <div class="carousel-item"><img src="modelo9.jpeg" alt="modelo 9" /></div>
   </div>
-  <div class="carousel-item">
-    <img
-      src="modelo7.jpeg"
-      alt="img3" />
-  </div>
-  <div class="carousel-item">
-    <img
-      src="modelo4.jpeg"
-      alt="img4" />
-  </div>
-  <div class="carousel-item">
-    <img
-      src="modelo5.jpeg"
-      alt="img5" />
-  </div>
-  <div class="carousel-item">
-    <img
-      src="modelo6.jpeg"
-      alt="img6" />
-  </div>
-  <div class="carousel-item">
-    <img
-      src="modelo8.jpeg"
-      alt="img7" />
-  </div>
-  <div class="carousel-item">
-    <img
-      src="modelo9.jpeg"
-      alt="img8" />
-  </div>
-</div>
-</div>
-<div class="product-container">
+</section>
 
-        <div class="product">
-           <img src="remera1.jpeg" alt="">
-           <h2 id="name">Remera básica de tiras</h2>
-           <p id="price">$25000</p>
-           <button add-to-cart>Agregar al carrito</button>
-        </div> 
+<!-- PRODUCTOS (dinámico desde tu API PHP) -->
+<main class="container" id="productos">
+  <h2 class="sr-only">Productos</h2>
+  <div id="grid" class="product-container"></div>
+</main>
 
-        <div class="product">
-           <img src="remera2.jpeg" alt="">
-           <h2 id="name">Remera ajustada</h2>
-           <p id="price">$25000</p>
-           <button add-to-cart>Agregar al carrito</button>
-        </div> 
-
-        <div class="product">
-           <img src="remera3.jpeg" alt="">
-           <h2 id="name">Top boxy</h2>
-           <p id="price">$30000</p>
-           <button add-to-cart>Agregar al carrito</button>
-        </div>
- <div class="product">
-           <img src="top1.jpeg" alt="">
-           <h2 id="name">Top bandeau</h2>
-           <p id="price">$28500</p>
-           <button add-to-cart>Agregar al carrito</button>
-        </div>
-         <div class="product">
-           <img src="vestido3.jpg" alt="">
-           <h2 id="name">Vestido halter con vuelo</h2>
-           <p id="price">$48500</p>
-           <button add-to-cart>Agregar al carrito</button>
-        </div>
-         <div class="product">
-           <img src="top2.jpeg" alt="">
-           <h2 id="name">Top asimétrico de un hombro</h2>
-           <p id="price">$24000</p>
-           <button add-to-cart>Agregar al carrito</button>
-        </div>
-        <div class="product">
-           <img src="remera4.jpeg" alt="">
-           <h2 id="name">Remera básica</h2>
-           <p id="price">$35000</p>
-           <button add-to-cart>Agregar al carrito</button>
-        </div>
-        <div class="product">
-           <img src="jeans2.jpg" alt="">
-           <h2 id="name">Jean wide-leg</h2>
-           <p id="price">$55000</p>
-           <button add-to-cart>Agregar al carrito</button>
-        </div>
-        <div class="product">
-           <img src="jeans1.jpg" alt="">
-           <h2 id="name">Jean wide-leg</h2>
-           <p id="price">$60000</p>
-           <button add-to-cart>Agregar al carrito</button>
-        </div>
-        <div class="product">
-           <img src="vesttido1.jpeg" alt="">
-           <h2 id="name">Vestido sin mangas</h2>
-           <p id="price">$50000</p>
-           <button add-to-cart>Agregar al carrito</button>
-        </div>
-         <div class="product">
-           <img src="jeans3.jpg" alt="">
-           <h2 id="name">Pantalón ancho cintura doble</h2>
-           <p id="price">$64000</p>
-           <button add-to-cart>Agregar al carrito</button>
-        </div>
-
+<!-- PLANTILLA DE CARD -->
+<template id="tpl-producto">
+  <article class="product" data-id="">
+    <img data-src="imagen" alt="">
+    <div class="meta">
+      <h2 data-txt="nombre">Producto</h2>
+      <p class="price" data-txt="precio">$0</p>
     </div>
-   </section>
+    <button class="add" data-action="add">Agregar al carrito</button>
+  </article>
+</template>
+
+<noscript>
+  <p style="text-align:center; padding:2rem;">Necesitás activar JavaScript para ver los productos.</p>
+</noscript>
+
+<!-- =============== MINI-CARRITO =============== -->
+<dialog id="cartDialog" class="modal">
+  <div class="modal-box w-11/12 max-w-2xl p-0 overflow-hidden">
+    <div class="cart-head flex items-center justify-between px-5 py-3">
+      <h3 class="text-white font-semibold text-lg">Tu carrito</h3>
+      <form method="dialog"><button class="btn btn-sm">Cerrar</button></form>
+    </div>
+    <div id="cartItems" class="divide-y divide-gray-200 max-h-[55vh] overflow-auto p-4 bg-white"></div>
+    <div class="bg-white/95 backdrop-blur border-t px-4 py-3 flex items-center justify-between sticky bottom-0">
+      <p class="text-base font-semibold">Total: <span id="cartTotal">$0</span></p>
+      <div class="flex gap-2">
+        <button id="clearCart" class="btn btn-ghost">Vaciar</button>
+        <button id="checkout" class="btn bg-[#7a4545] text-white hover:brightness-95">Finalizar compra</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- Toasts -->
+<div id="toast" class="toast toast-top toast-end z-[1000]"></div>
+
+<!-- =============== DETALLE DE PRODUCTO =============== -->
+<dialog id="productDialog" class="modal">
+  <div class="modal-box max-w-3xl p-0 overflow-hidden">
+    <button class="btn btn-sm btn-circle absolute right-3 top-3"
+            onclick="document.getElementById('productDialog').close()">✕</button>
+
+    <div class="pd-body p-4">
+      <div>
+        <img id="pdImg" class="pd-img" alt="">
+        <div id="pdThumbs" class="pd-thumbs"></div>
+      </div>
+      <div class="pd-info">
+        <h3 id="pdName" class="pd-name">Producto</h3>
+        <p id="pdPrice" class="pd-price">$0</p>
+
+        <div class="pd-row">
+          <span class="pd-label">Color</span>
+          <div id="pdColors" class="pd-colors"><span class="text-sm text-gray-500">—</span></div>
+        </div>
+
+        <div class="pd-row">
+          <span class="pd-label">Talles</span>
+          <div id="pdSizes" class="pd-sizes"><span class="text-sm text-gray-500">—</span></div>
+        </div>
+
+        <button id="pdAdd" class="btn bg-[#7a4545] text-white hover:brightness-95 mt-2">
+          Agregar al carrito
+        </button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<footer class="bg-gray-900 text-gray-200 py-10">
+  <div class="container mx-auto px-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div>
+        <h2 class="text-2xl font-bold mb-2">E&amp;S</h2>
+        <p class="text-sm opacity-80">
+          Tienda especializada en moda y estilo, con envío nacional y productos de calidad.
+          Nuestra misión es que te sientas cómoda y auténtica con cada elección.
+        </p>
+      </div>
+      <div>
+        <h3 class="text-lg font-semibold mb-3">Enlaces útiles</h3>
+        <ul class="space-y-2">
+          <li><a href="terminos.html" class="hover:text-white">Términos y condiciones</a></li>
+          <li><a href="privacidad.html" class="hover:text-white">Política de privacidad</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-lg font-semibold mb-3">Contacto & Redes</h3>
+        <ul class="space-y-2 text-sm">
+          <li>Email: <a href="mailto:E&Sindumentaria@gmail.com" class="hover:text-white">E&Sindumentaria@gmail.com</a></li>
+          <li>Teléfono: <a href="tel:+5492611234567" class="hover:text-white">+54 9 261 123-4567</a></li>
+          <li>Dirección: San Martín 123, Mendoza, Argentina</li>
+        </ul>
+        <div class="flex space-x-4 mt-4">
+          <a href="https://www.facebook.com" target="_blank" class="hover:text-white"><svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"></svg></a>
+          <a href="https://www.instagram.com" target="_blank" class="hover:text-white"><svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"></svg></a>
+          <a href="https://www.tiktok.com" target="_blank" class="hover:text-white"><svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"></svg></a>
+        </div>
+      </div>
+    </div>
+
+    <hr class="my-8 border-gray-700" />
+    <div class="text-center text-sm opacity-70">
+      &copy; <span id="anio-current"></span> E&amp;S. Todos los derechos reservados.
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById("anio-current").textContent = new Date().getFullYear();
+</script>
+
 </body>
 </html>
+
+
+
+
