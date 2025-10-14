@@ -20,7 +20,6 @@
         radial-gradient(900px 600px at -10% 100%, #7a454533 0%, transparent 60%),
         var(--bg);
     }
-    /* botón volver */
     .top-nav{ position:fixed; top:16px; left:16px; }
     .top-nav a{
       color:#fff; text-decoration:none; padding:8px 12px; border-radius:999px;
@@ -104,7 +103,7 @@
 
       <div class="actions">
         <label><input type="checkbox" id="remember"> Recuérdame</label>
-        <a href="#" style="color:#7a4545; text-decoration:none">¿Olvidaste tu contraseña?</a>
+        <a href="request_reset.php" style="color:#7a4545; text-decoration:none">¿Olvidaste tu contraseña?</a>
       </div>
 
       <button class="btn" type="submit">
@@ -112,7 +111,7 @@
       </button>
 
       <p class="muted">¿No tenés cuenta?
-        <a href="#" onclick="alert('Registro próximamente 😊');return false;">Crear cuenta</a>
+        <a href="cliente_registro.php">Crear cuenta</a>
       </p>
     </form>
   </section>
@@ -127,7 +126,7 @@
       toggle.textContent = show ? 'visibility_off' : 'visibility';
     });
 
-    // Validación mínima (reemplazá por tu backend)
+    // Demo frontend (en producción: posteá a tu backend)
     const form = document.getElementById('loginForm');
     const errorBox = document.getElementById('errorBox');
     form.addEventListener('submit', (e) => {
@@ -142,9 +141,7 @@
         errorBox.style.display = 'block';
         return;
       }
-
-      // Ejemplo: guardar email y volver al home
-      // (En producción: hacé fetch a tu PHP y redirigí si responde OK)
+      // Demo
       localStorage.setItem('userEmail', email);
       window.location.href = 'index.html';
     });

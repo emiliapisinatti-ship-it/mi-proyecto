@@ -1,4 +1,6 @@
 <?php
+// admin_login.php
+declare(strict_types=1);
 session_start();
 require __DIR__.'/api/db.php';
 require __DIR__.'/config.local.php'; // define $ADMIN_GATE y $ADMIN_ALLOWED_IPS
@@ -6,28 +8,28 @@ require __DIR__.'/config.local.php'; // define $ADMIN_GATE y $ADMIN_ALLOWED_IPS
 // Gate 1: clave secreta en la URL ?k=...
 if (!isset($_GET['k']) || $_GET['k'] !== $ADMIN_GATE) {
   http_response_code(404);
-  exit; // nada de HTML; finge que no existe
+  exit;
 }
 
-// Gate 2 (opcional): permitir solo ciertas IPs
+// Gate 2 (opcional): whitelist de IPs
 if (!empty($ADMIN_ALLOWED_IPS) && !in_array($_SERVER['REMOTE_ADDR'] ?? '', $ADMIN_ALLOWED_IPS, true)) {
   http_response_code(403);
   exit;
 }
 
-// --- login normal del dueño ---
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $email = trim($_POST['email'] ?? '');
-  $pass  = $_POST['password'] ?? '';
+  $pass  = (string)($_POST['password'] ?? '');
 
-  $st = $pdo->prepare("SELECT id, password_hash FROM admins WHERE email=?");
+  $st = $pdo->prepare("SELECT id, password_hash FROM admins WHERE email=? LIMIT 1");
   $st->execute([$email]);
-  $u = $st->fetch();
+  $u = $st->fetch(PDO::FETCH_ASSOC);
 
   if ($u && password_verify($pass, $u['password_hash'])) {
-    $_SESSION['admin_id'] = $u['id'];
-    header('Location: admin.php'); exit;
+    $_SESSION['admin_id'] = (int)$u['id'];
+    header('Location: admin.php');
+    exit;
   } else {
     $error = 'Usuario o clave incorrectos';
   }
@@ -55,4 +57,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </form>
 </body>
 </html>
-

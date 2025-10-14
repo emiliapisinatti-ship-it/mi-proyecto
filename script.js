@@ -1,7 +1,10 @@
+// BUILD 2025-10-13-01
+console.log('Cargando JS NUEVO: BUILD 2025-10-13-01');
 
-/* ========= Config ========= */
-// Endpoint PHP (debe devolver JSON). Serví por http://localhost..., no file://
-const API = new URL('api/products.php', location.href).toString();
+//* ========= Config ========= *//
+// Endpoints PHP (serví por http://localhost..., no file://)
+const API          = new URL('api/products.php',  location.href).toString();
+const CHECKOUT_API = new URL('api/checkout.php',  location.href).toString();
 
 /* ========= Refs ========= */
 const grid      = document.getElementById('grid');
@@ -28,7 +31,6 @@ const clearCartBtn = document.getElementById('clearCart');
 const checkoutBtn  = document.getElementById('checkout');
 
 /* ========= Estado ========= */
-// Si tu columna category tiene valor (p.ej. "mujer"), podés fijarla así: category: 'mujer'
 const state = { category: '', kind: '', size: '', color: '' };
 let LAST_PRODUCTS = [];
 let CURRENT_PROD  = null;
@@ -39,16 +41,23 @@ const money = n => `ARS ${Number(n||0).toLocaleString('es-AR')}`;
 const csv   = s => String(s||'').split(',').map(x=>x.trim()).filter(Boolean);
 const clean = o => Object.fromEntries(Object.entries(o).filter(([,v]) => v != null && String(v).trim() !== ''));
 const toAbs = p => new URL(String(p||'').replace(/^\/+/, ''), location.href).toString();
+const uniq  = arr => Array.from(new Set(arr));
 function normalizeImg(it){
   let src = String(it.img || it.imagen || it.imagenURL || '').trim();
   if (!src) return 'imagenes/placeholder.jpg';
   return src.replace(/^img\//i,'imagenes/').replace(/\.jpge$/i,'.jpg');
 }
+function getProductById(id){ return LAST_PRODUCTS.find(x => String(x.id) === String(id)); }
+function hasVariants(prod){ return Array.isArray(prod?.variants) && prod.variants.length > 0; }
 
 /* ========= Arranque ========= */
 document.addEventListener('DOMContentLoaded', () => {
   loadProducts(state);
   updateBagCount();
+
+  // (Opcional) si volvemos con ?go=checkout, abrir el mini-carrito
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('go') === 'checkout') bagBtn?.click();
 });
 
 /* ========= Filtros (menú) ========= */
@@ -58,9 +67,9 @@ menu?.addEventListener('click', async (e) => {
   e.preventDefault(); e.stopPropagation();
 
   if (a.dataset.clear) { state.kind = state.size = state.color = ''; }
-  if (a.dataset.kind)  state.kind  = a.dataset.kind;   // remeras | pantalones | vestidos
-  if (a.dataset.size)  state.size  = a.dataset.size;   // XS | S | M | L
-  if (a.dataset.color) state.color = a.dataset.color;  // negro | blanco | rojo | celeste
+  if (a.dataset.kind)  state.kind  = a.dataset.kind;    // remeras | pantalones | vestidos
+  if (a.dataset.size)  state.size  = a.dataset.size;    // XS | S | M | L | U
+  if (a.dataset.color) state.color = a.dataset.color;   // negro | blanco | rojo | ...
 
   await loadProducts(state);
   menu.open = false;
@@ -73,7 +82,6 @@ async function loadProducts(filters = {}) {
     const qs  = new URLSearchParams(clean(filters)).toString();
     const url = qs ? `${API}?${qs}` : API;
 
-    console.log('→ Fetch:', url); // para verificar qué se manda
     const res  = await fetch(url, { cache: 'no-store' });
     const text = await res.text();
 
@@ -86,8 +94,14 @@ async function loadProducts(filters = {}) {
       grid.innerHTML = '<p style="color:#fff">Sin resultados.</p>';
       return;
     }
-    LAST_PRODUCTS = data;
-    renderGrid(data);
+
+    // normalizo variantes si vienen nulas
+    LAST_PRODUCTS = data.map(p => ({
+      ...p,
+      variants: Array.isArray(p.variants) ? p.variants : []  // cada v: {id,size,color,stock}
+    }));
+
+    renderGrid(LAST_PRODUCTS);
   } catch (e) {
     console.error(e);
     grid.innerHTML = '<p style="color:#f88">Error leyendo la API.</p>';
@@ -116,7 +130,6 @@ function renderGrid(lista){
     if (nameEl)  nameEl.textContent  = it.name  || it.nombre || 'Producto';
     if (priceEl) priceEl.textContent = money(it.price || it.precio || 0);
 
-    // botón agregar
     const add = card.querySelector('[data-action="add"]');
     if (add) {
       add.classList.add('add');
@@ -134,15 +147,29 @@ function renderGrid(lista){
 function buildGallery(prod){
   const main = toAbs(normalizeImg(prod));
   const out = [main];
-
-  // Si algún día guardás una galería CSV
   if (prod.gallery) csv(prod.gallery).forEach(u=>out.push(toAbs(u)));
+  return uniq(out);
+}
 
-  // Intenta _2 _3 _4
-  const m = main.match(/(.+)(\.[a-z0-9]+)$/i);
-  if (m) out.push(`${m[1]}_2${m[2]}`, `${m[1]}_3${m[2]}`, `${m[1]}_4${m[2]}`);
-
-  return Array.from(new Set(out));
+function variantOf(prod, size, color){
+  const vars = prod.variants || [];
+  return vars.find(v => (v.size||'') === (size||'') && (v.color||'') === (color||'')) || null;
+}
+function updateAddButtonState(prod){
+  const s = SELECTED.size, c = SELECTED.color;
+  const v = variantOf(prod, s, c);
+  const available = v ? (v.stock ?? 0) : 0;
+  if (!pdAddBtn) return;
+  if (!s || !c) {
+    pdAddBtn.disabled = true;
+    pdAddBtn.textContent = 'Elegí talle y color';
+  } else if (available <= 0) {
+    pdAddBtn.disabled = true;
+    pdAddBtn.textContent = 'Sin stock';
+  } else {
+    pdAddBtn.disabled = false;
+    pdAddBtn.textContent = `Agregar al carrito (${available} disp.)`;
+  }
 }
 
 function openDetail(prod){
@@ -162,9 +189,13 @@ function openDetail(prod){
     pdThumbs.innerHTML = gal.map((src,i)=>`<img src="${src}" class="pd-thumb ${i? '': 'is-active'}" data-idx="${i}">`).join('');
   }
 
-  // colores y talles (acepta color/colores y sizes/talles)
-  const colors = csv(prod.color ?? prod.colores);
-  const sizes  = csv(prod.sizes ?? prod.talles);
+  // armo listas desde variantes si existen
+  let colors = csv(prod.color ?? prod.colores);
+  let sizes  = csv(prod.sizes ?? prod.talles);
+  if (hasVariants(prod)) {
+    colors = uniq((prod.variants || []).map(v=>v.color).filter(Boolean));
+    sizes  = uniq((prod.variants || []).map(v=>v.size).filter(Boolean));
+  }
 
   if (pdColors) {
     pdColors.innerHTML = colors.length
@@ -177,14 +208,16 @@ function openDetail(prod){
       : '<span class="text-sm text-gray-500">—</span>';
   }
 
+  updateAddButtonState(prod);
   dlgProd?.showModal?.();
 }
 
+/* ======== Interacciones ======== */
 // abrir detalle al tocar la imagen
 grid?.addEventListener('click', (e)=>{
   const img = e.target.closest('.product img'); if (!img) return;
   const id  = img.dataset.id || img.closest('.product')?.dataset.id;
-  const p   = LAST_PRODUCTS.find(x => String(x.id) === String(id));
+  const p   = getProductById(id);
   if (p) openDetail(p);
 });
 
@@ -202,6 +235,7 @@ pdColors?.addEventListener('click', (e)=>{
   SELECTED.color = b.dataset.color || null;
   pdColors.querySelectorAll('.color-chip').forEach(x=>x.classList.remove('is-selected'));
   b.classList.add('is-selected');
+  if (CURRENT_PROD) updateAddButtonState(CURRENT_PROD);
 });
 
 // elegir talle
@@ -210,22 +244,70 @@ pdSizes?.addEventListener('click', (e)=>{
   SELECTED.size = b.dataset.size || null;
   pdSizes.querySelectorAll('.size-btn').forEach(x=>x.classList.remove('is-selected'));
   b.classList.add('is-selected');
+  if (CURRENT_PROD) updateAddButtonState(CURRENT_PROD);
 });
 
-// agregar al carrito desde el modal (con variante)
+// agregar al carrito desde el modal (usa ID de variante)
 pdAddBtn?.addEventListener('click', ()=>{
   if (!CURRENT_PROD) return;
-  const base = CURRENT_PROD.id;
-  const id   = `${base}::${SELECTED.size||''}::${SELECTED.color||''}`;
+  const s = SELECTED.size, c = SELECTED.color;
+  const v = variantOf(CURRENT_PROD, s, c);
+  if (!v || (v.stock ?? 0) <= 0) { alert('Elegí una combinación con stock.'); return; }
+
   addToCart({
-    id,
+    id:   String(v.id), // id = variante
     name: (CURRENT_PROD.name||CURRENT_PROD.nombre||'Producto') +
-          (SELECTED.color? ` · ${SELECTED.color}`:'') +
-          (SELECTED.size ? ` · Talle ${SELECTED.size}`:''),
+          (c? ` · ${c}`:'') + (s? ` · Talle ${s}`:''),
     price: + (CURRENT_PROD.price || CURRENT_PROD.precio || 0),
-    img:   pdImg?.src || normalizeImg(CURRENT_PROD)
+    img:   pdImg?.src || normalizeImg(CURRENT_PROD),
+    variant_id: v.id, size: s, color: c,
+    qty: 1
   });
   dlgProd?.close?.();
+});
+
+/* botón "Agregar al carrito" de la CARD */
+grid?.addEventListener('click', (e)=>{
+  const b = e.target.closest('.add'); 
+  if (!b) return;
+
+  const pid = b.closest('.product')?.dataset.id || b.dataset.id;
+  const prod = getProductById(pid);
+  if (!prod) return;
+
+  if (hasVariants(prod)) {
+    // Si hay solo UNA variante con stock, la agrego directo; sino abrir modal
+    const avail = (prod.variants || []).filter(v => (v.stock ?? 0) > 0);
+    if (avail.length === 1) {
+      const v = avail[0];
+      addToCart({
+        id: String(v.id),
+        name: `${prod.name || prod.nombre} · ${v.color || ''}${v.color ? ' · ' : ''}${v.size ? 'Talle '+v.size : ''}`.trim(),
+        price: +(prod.price || prod.precio || 0),
+        img:  b.dataset.img,
+        variant_id: v.id,
+        size: v.size || null,
+        color: v.color || null,
+        qty: 1
+      });
+      b.disabled = true; const old=b.textContent; b.textContent='Agregado ✓';
+      setTimeout(()=>{ b.disabled=false; b.textContent=old; }, 900);
+    } else {
+      openDetail(prod);
+    }
+    return;
+  }
+
+  // Productos sin variantes (legacy)
+  addToCart({
+    id:   String(b.dataset.id),
+    name: String(b.dataset.name),
+    price:+b.dataset.price || 0,
+    img:  b.dataset.img,
+    qty: 1
+  });
+  b.disabled = true; const old=b.textContent; b.textContent='Agregado ✓';
+  setTimeout(()=>{ b.disabled=false; b.textContent=old; }, 900);
 });
 
 /* ========= Carrito ========= */
@@ -242,19 +324,6 @@ function addToCart(item){
   saveCart(cart);
   updateBagCount();
 }
-
-/* botón "Agregar al carrito" de la card */
-grid?.addEventListener('click', (e)=>{
-  const b = e.target.closest('.add'); if (!b) return;
-  addToCart({
-    id:   String(b.dataset.id),
-    name: String(b.dataset.name),
-    price:+b.dataset.price || 0,
-    img:  b.dataset.img
-  });
-  b.disabled = true; const old=b.textContent; b.textContent='Agregado ✓';
-  setTimeout(()=>{ b.disabled=false; b.textContent=old; }, 900);
-});
 
 /* mini-carrito simple */
 bagBtn?.addEventListener('click', ()=>{
@@ -277,20 +346,93 @@ bagBtn?.addEventListener('click', ()=>{
   }
   cartDlg?.showModal?.();
 });
+
 clearCartBtn?.addEventListener('click', ()=>{
   saveCart([]); updateBagCount();
   cartList.innerHTML = '<div class="text-center text-gray-500 py-8">Tu carrito está vacío.</div>';
   cartTotal.textContent = money(0);
 });
-checkoutBtn?.addEventListener('click', ()=>{
-  alert('¡Gracias por tu compra! (demo)');
-  saveCart([]); updateBagCount(); cartDlg?.close?.();
+
+/* ===== Finalizar compra (requiere login) ===== */
+checkoutBtn?.addEventListener('click', async () => {
+  const cart = loadCart();
+  if (!cart.length) { alert('Tu carrito está vacío'); return; }
+
+  const faltan = cart.filter(it => !it.variant_id);
+  if (faltan.length){
+    alert('Falta elegir talle/color en:\n\n' + faltan.map(i => '• ' + i.name).join('\n'));
+    return;
+  }
+
+  // ¿Está logueado?
+  let me = null;
+  try {
+    const r = await fetch('api/me.php', { cache: 'no-store' });
+    me = await r.json();
+  } catch {}
+
+  if (!me?.ok || !me?.customer?.id) {
+    // no logueado → al login y volvemos a checkout
+    const next = encodeURIComponent('checkout.php');
+    window.location.href = `cliente_login.php?next=${next}`;
+    return;
+  }
+
+  // logueado → vamos a la página checkout (form + envío a api/checkout.php)
+  window.location.href = 'checkout.php';
 });
 
+/* ========= FIX: Dropdown (menú Mujer) siempre pegado al botón ========= */
+(function(){
+  const dd = menu; 
+  if (!dd) return;
+  const ddSummary = dd.querySelector('summary');
+  const ddPanel   = dd.querySelector('.dd-panel');
+  if (!ddSummary || !ddPanel) return;
 
+  function placeDropdown() {
+    ddPanel.style.position  = 'fixed';
+    ddPanel.style.zIndex    = '20000';
 
+    // mostrar temporalmente para medir
+    const prevDisplay = ddPanel.style.display;
+    const prevVis     = ddPanel.style.visibility;
+    ddPanel.style.visibility = 'hidden';
+    ddPanel.style.display    = 'grid';
 
+    const r  = ddSummary.getBoundingClientRect();
+    const ph = ddPanel.offsetHeight;
+    const pw = ddPanel.offsetWidth;
+    const m = 8;
 
+    // X clamp
+    let left = Math.min(Math.max(m, r.left), window.innerWidth - pw - m);
 
+    // Y: abajo por defecto; si no entra, arriba
+    let top = r.bottom + m;
+    if (top + ph + m > window.innerHeight) top = r.top - ph - m;
+    top = Math.min(Math.max(m, top), window.innerHeight - ph - m);
 
+    ddPanel.style.left = `${left}px`;
+    ddPanel.style.top  = `${top}px`;
 
+    ddPanel.style.visibility = prevVis || '';
+    ddPanel.style.display    = prevDisplay || '';
+  }
+
+  function onOpen() {
+    placeDropdown();
+    window.addEventListener('scroll', placeDropdown, { passive:true });
+    window.addEventListener('resize', placeDropdown);
+  }
+  function onClose() {
+    window.removeEventListener('scroll', placeDropdown);
+    window.removeEventListener('resize', placeDropdown);
+  }
+
+  dd.addEventListener('toggle', () => { if (dd.open) onOpen(); else onClose(); });
+
+  // Cerrar al click afuera / Escape
+  document.addEventListener('click', (e) => { if (dd.open && !dd.contains(e.target)) dd.removeAttribute('open'); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && dd.open) dd.removeAttribute('open'); });
+})();

@@ -3,76 +3,96 @@
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 
-require __DIR__ . '/db.php'; // $pdo (PDO MySQL)
+require __DIR__ . '/db.php';
 
-function q($k){ return isset($_GET[$k]) ? trim((string)$_GET[$k]) : ''; }
+// Helper
+function out($data, int $code = 200){
+  http_response_code($code);
+  echo json_encode($data, JSON_UNESCAPED_UNICODE);
+  exit;
+}
+function clean_str($v){ return trim((string)$v); }
 
-$onlyActive = (q('admin') !== '1');  // admin=1 -> NO filtra por active
-$where = [];
+// ====== Filtros ======
+$isAdmin     = isset($_GET['admin']) && (string)$_GET['admin'] === '1';
+$onlyActive  = isset($_GET['only_active']) && (string)$_GET['only_active'] === '1'; // <—
+
+$category  = clean_str($_GET['category'] ?? '');
+$kind      = clean_str($_GET['kind'] ?? '');
+$size      = clean_str($_GET['size'] ?? '');
+$color     = clean_str($_GET['color'] ?? '');
+
+$where  = [];
 $params = [];
 
-if ($onlyActive) { $where[] = 'active = 1'; }
-
-$category = q('category');  // ej: mujer
-$kind     = q('kind');      // ej: remeras | pantalones | vestidos
-$size     = strtoupper(q('size')); // S,M,L...
-$color    = q('color');     // negro, blanco...
-
-if ($category !== '') { $where[] = 'category = :category'; $params[':category'] = $category; }
-if ($kind     !== '') { $where[] = 'kind = :kind';         $params[':kind']     = $kind;     }
-
-if ($size !== '') {
-  // sizes viene como CSV (p.ej. "S,M,L")
-  $where[] = "(FIND_IN_SET(:size, REPLACE(sizes,' ','')) OR UPPER(sizes) LIKE :size_like)";
-  $params[':size'] = $size;
-  $params[':size_like'] = "%$size%";
-}
-if ($color !== '') {
-  $where[] = "(color = :color
-              OR FIND_IN_SET(:color2, REPLACE(color,' ','')) 
-              OR color LIKE :color_like)";
-  $params[':color'] = $color;
-  $params[':color2'] = $color;
-  $params[':color_like'] = "%$color%";
+// Clientes siempre ven solo activos
+if (!$isAdmin) {
+  $where[] = 'p.active = 1';
+} elseif ($onlyActive) {
+  // Admin con filtro explícito
+  $where[] = 'p.active = 1';
 }
 
-$sql = 'SELECT id, name, price, category, color, sizes, img, kind, active
-        FROM products';
-if ($where) $sql .= ' WHERE ' . implode(' AND ', $where);
-$sql .= ' ORDER BY id DESC LIMIT 500';
+// Filtros opcionales
+if ($category !== '') { $where[] = 'LOWER(p.category) = LOWER(?)'; $params[] = $category; }
+if ($kind     !== '') { $where[] = 'LOWER(p.kind)     = LOWER(?)'; $params[] = $kind; }
+if ($size     !== '') { $where[] = 'EXISTS (SELECT 1 FROM product_variants v2 WHERE v2.product_id = p.id AND UPPER(v2.size) = UPPER(?))';  $params[] = $size; }
+if ($color    !== '') { $where[] = 'EXISTS (SELECT 1 FROM product_variants v3 WHERE v3.product_id = p.id AND LOWER(COALESCE(v3.color,"")) = LOWER(?))'; $params[] = $color; }
 
-try {
+$sql = "SELECT p.id, p.name, p.category, p.kind, p.price, p.color, p.sizes, p.img, p.active
+        FROM products p"
+      . ($where ? " WHERE " . implode(" AND ", $where) : "")
+      . " ORDER BY p.id DESC";
+
+try{
   $st = $pdo->prepare($sql);
   $st->execute($params);
-  $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+  $prods = $st->fetchAll(PDO::FETCH_ASSOC);
 
-  // Devolvemos ambos juegos de claves para que sirva tanto el front como el admin
-  $out = array_map(function($r){
-    return [
-      // nombres "EN" (admin)
-      'id'       => (int)$r['id'],
-      'name'     => $r['name'],
-      'price'    => (float)$r['price'],
-      'category' => $r['category'],
-      'color'    => $r['color'],
-      'sizes'    => $r['sizes'],
-      'img'      => $r['img'],
-      'kind'     => $r['kind'],
-      'active'   => (int)$r['active'],
+  if (!$prods) out([]);
 
-      // alias "ES" (front)
-      'nombre'    => $r['name'],
-      'precio'    => (float)$r['price'],
-      'categoria' => $r['category'],
-      'colores'   => $r['color'],
-      'talles'    => $r['sizes'],
-      'imagen'    => $r['img'],
-      'activo'    => (int)$r['active'],
+  // Variantes en 1 tanda y adjuntar
+  $ids = array_column($prods, 'id');
+  $ph  = implode(',', array_fill(0, count($ids), '?'));
+  $sv  = $pdo->prepare("SELECT id, product_id, sku, size, color, stock
+                        FROM product_variants
+                        WHERE product_id IN ($ph)
+                        ORDER BY product_id, color, size");
+  $sv->execute($ids);
+  $vars = $sv->fetchAll(PDO::FETCH_ASSOC);
+
+  $vv = [];
+  foreach ($vars as $v){
+    $pid = (int)$v['product_id'];
+    if (!isset($vv[$pid])) $vv[$pid] = [];
+    $vv[$pid][] = [
+      'id'    => (int)$v['id'],
+      'sku'   => (string)$v['sku'],
+      'size'  => $v['size'] !== null ? (string)$v['size'] : null,
+      'color' => $v['color'] !== null ? (string)$v['color'] : null,
+      'stock' => (int)$v['stock'],
     ];
-  }, $rows);
+  }
 
-  echo json_encode($out, JSON_UNESCAPED_UNICODE);
-} catch (Throwable $e) {
-  http_response_code(500);
-  echo json_encode(['ok'=>false, 'error'=>'DB', 'details'=>$e->getMessage()]);
+  $out = [];
+  foreach ($prods as $p){
+    $pid = (int)$p['id'];
+    $out[] = [
+      'id'       => $pid,
+      'name'     => (string)$p['name'],
+      'category' => (string)$p['category'],
+      'kind'     => (string)$p['kind'],
+      'price'    => (float)$p['price'],
+      'color'    => (string)($p['color'] ?? ''),
+      'sizes'    => (string)($p['sizes'] ?? ''),
+      'img'      => (string)($p['img'] ?? ''),
+      'active'   => (int)$p['active'],
+      'variants' => $vv[$pid] ?? [],
+    ];
+  }
+
+  out($out);
+
+} catch(Throwable $e){
+  out(['ok'=>false,'error'=>'DB: '.$e->getMessage()], 500);
 }

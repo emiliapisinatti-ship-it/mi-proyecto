@@ -1,11 +1,9 @@
-
 <?php
 session_start();
 if (empty($_SESSION['admin_id'])) {
   header('Location: login.php'); exit;
 }
 ?>
-
 <!doctype html>
 <html lang="es">
 <head>
@@ -16,18 +14,15 @@ if (empty($_SESSION['admin_id'])) {
 </head>
 <body class="bg-slate-100 text-slate-900 max-w-6xl mx-auto p-4">
 
-
-  <h1 class="text-2xl font-bold mb-4">Panel de productos</h1>
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold mb-4">Panel de productos</h1>
+    <a href="admin_stock.php" class="underline text-sm">Gestión de stock</a>
+  </div>
 
   <!-- Alta -->
   <section class="bg-white rounded-xl shadow p-4 mb-8">
     <h2 class="font-semibold text-lg mb-3">Nuevo producto</h2>
 
-    <!--
-      Nombres del form (ES) -> el backend los mapea a tu tabla (EN):
-      nombre->name, categoria->kind, category (implícito mujer),
-      precio->price, colores->color, talles->sizes, imagenURL->img, activo->active
-    -->
     <form id="f" class="grid gap-4 md:grid-cols-2">
       <input  name="nombre"     class="border p-2 rounded" placeholder="Nombre" required />
       <input  name="categoria"  class="border p-2 rounded" placeholder="Tipo (remeras, pantalones…)" required />
@@ -74,53 +69,46 @@ if (empty($_SESSION['admin_id'])) {
 
   <script>
     // Endpoints
-    const API_LIST   = 'api/products.php?admin=1';   // admin=1 -> trae también inactivos
+    // Solo activos por defecto para que no aparezcan los que tienen imagen rota
+    const API_LIST   = 'api/products.php?admin=1&only_active=1';
     const API_ADD    = 'api/add_product.php';
     const API_TOGGLE = 'api/toggle_active.php';
-    const API_DELETE = 'api/delete_product.php';
+    const API_DELETE = 'api/delete_product.php';   // soft delete (active=0)
 
-    // Refs
     const $f    = document.getElementById('f');
     const $msg  = document.getElementById('msg');
     const $body = document.getElementById('tbody');
 
     const money = n => `ARS ${Number(n||0).toLocaleString('es-AR')}`;
 
-    // Listado
     async function loadProducts(){
       $body.innerHTML = '<tr><td class="py-4 opacity-70" colspan="6">Cargando…</td></tr>';
       const res = await fetch(API_LIST, { cache:'no-store' });
       const data = await res.json().catch(()=>[]);
-
       if (!Array.isArray(data) || data.length===0) {
-        $body.innerHTML = '<tr><td class="py-4 opacity-70" colspan="6">Sin productos.</td></tr>';
+        $body.innerHTML = '<tr><td class="py-4 opacity-70" colspan="6">Sin productos activos.</td></tr>';
         return;
       }
-
       $body.innerHTML = data.map(p => `
         <tr class="border-b align-top" data-id="${p.id}">
           <td class="py-2 pr-4">
             ${p.img ? `<img src="${p.img}" alt="" class="w-14 h-14 object-cover rounded">` : '<span class="opacity-60">—</span>'}
           </td>
-
           <td class="py-2 pr-4">
             <div class="font-medium">${p.name || ''}</div>
             <div class="text-xs opacity-70">Colores: ${p.color || '-'}</div>
             <div class="text-xs opacity-70">Talles: ${p.sizes || '-'}</div>
           </td>
-
           <td class="py-2 pr-4">${p.kind || p.category || '-'}</td>
           <td class="py-2 pr-4">${money(p.price)}</td>
-
           <td class="py-2 pr-4">
             <label class="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" class="toggle" ${p.active ? 'checked' : ''}>
+              <input type="checkbox" class="js-toggle" ${p.active ? 'checked' : ''}>
               <span>${p.active ? 'Sí' : 'No'}</span>
             </label>
           </td>
-
           <td class="py-2 pr-4">
-            <button class="del text-red-600 underline text-sm">Eliminar</button>
+            <a href="#" class="link-del text-red-600" data-id="${p.id}">Eliminar</a>
           </td>
         </tr>
       `).join('');
@@ -130,7 +118,6 @@ if (empty($_SESSION['admin_id'])) {
     $f.addEventListener('submit', async (e) => {
       e.preventDefault();
       $msg.textContent = 'Guardando…';
-
       const fd = new FormData($f);
       const payload = Object.fromEntries(fd.entries());
       payload.precio = Number(payload.precio || 0);
@@ -142,7 +129,6 @@ if (empty($_SESSION['admin_id'])) {
         body: JSON.stringify(payload)
       });
       const data = await res.json().catch(()=>({ok:false}));
-
       if (data.ok) {
         $msg.textContent = 'Producto creado ✅';
         $f.reset();
@@ -156,11 +142,9 @@ if (empty($_SESSION['admin_id'])) {
     // Delegación: toggle y eliminar
     document.addEventListener('click', async (e) => {
       const row = e.target.closest('tr[data-id]');
-      if (!row) return;
-      const id = row.dataset.id;
+      const id  = row?.dataset.id;
 
-      // Activo / inactivo
-      if (e.target.classList.contains('toggle')) {
+      if (e.target.classList.contains('js-toggle')) {
         const activo = e.target.checked ? 1 : 0;
         const res = await fetch(API_TOGGLE, {
           method:'POST',
@@ -172,22 +156,31 @@ if (empty($_SESSION['admin_id'])) {
           alert('No se pudo actualizar "Activo".');
           e.target.checked = !e.target.checked;
         } else {
-          // Actualiza el texto "Sí/No"
           e.target.nextElementSibling.textContent = activo ? 'Sí' : 'No';
         }
+        return;
       }
 
-      // Eliminar
-      if (e.target.classList.contains('del')) {
-        if (!confirm('¿Eliminar este producto?')) return;
-        const res = await fetch(API_DELETE, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ id })
-        });
-        const data = await res.json().catch(()=>({ok:false}));
-        if (data.ok) row.remove();
-        else alert('No se pudo eliminar');
+      const a = e.target.closest('.link-del');
+      if (a) {
+        e.preventDefault();
+        const pid = a.dataset.id;
+        if (!pid) return;
+        if (!confirm('¿Seguro? Se ocultará de la tienda.')) return;
+
+        try {
+          const res = await fetch(API_DELETE, {
+            method: 'POST',
+            headers: {'Content-Type':'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({id: pid})
+          });
+          const data = await res.json();
+          if (!data.ok) throw new Error(data.error || 'Error');
+          // lo quitamos visualmente
+          a.closest('tr')?.remove();
+        } catch (err) {
+          alert('No se pudo eliminar: ' + err.message);
+        }
       }
     });
 
@@ -196,4 +189,3 @@ if (empty($_SESSION['admin_id'])) {
   </script>
 </body>
 </html>
-

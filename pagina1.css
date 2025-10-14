@@ -1,0 +1,96 @@
+/* --- Base --- */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body{
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: #7f7878;             /* tu fondo de portada */
+  color: #111;
+}
+
+/* Línea blanca superior */
+.top-line{
+  height: 10px;                     /* grosor de la línea */
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(255,255,255,.25);
+}
+
+/* Contenido */
+main{
+  display: grid;
+  gap: 16px;
+  padding: 0 20px 24px;            /* sin padding-top para subir todo */
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Título (más arriba y menos espacio con imágenes) */
+.logo{
+  text-align: center;
+  margin: 24px 0 6px;              /* arriba 24, abajo 6 (menos gap) */
+}
+.logo h1{
+  font-family: "Lustria", serif;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1;
+  font-size: clamp(56px, 10vw, 140px); /* grande pero responsivo */
+}
+
+/* Grilla de imágenes con poco espacio respecto al título */
+.imagenes{
+  display: flex;
+  justify-content: center;
+  gap: 14px;                       /* espacio entre imágenes */
+  margin: 0;                       /* sin margen extra */
+}
+.imagenes img{
+  width: 280px;
+  height: 380px;
+  object-fit: cover;
+  border-radius: 8px;
+  transition: transform .25s ease;
+}
+.imagenes img:hover{
+  transform: scale(1.04);
+}
+
+/* Botones de llamada a la acción (opcional) */
+.cta{
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 6px;                 /* poquito espacio debajo de las fotos */
+}
+.btn-primary,
+.btn-ghost{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 16px;
+  text-decoration: none;
+}
+.btn-primary{
+  background: #111;
+  color: #fff;
+}
+.btn-ghost{
+  background: transparent;
+  color: #111;
+  border: 1px solid rgba(0,0,0,.3);
+}
+
+/* Responsive pequeño */
+@media (max-width: 900px){
+  .imagenes{
+    flex-wrap: wrap;
+  }
+  .imagenes img{
+    width: min(46%, 320px);
+    height: 300px;
+  }
+}
