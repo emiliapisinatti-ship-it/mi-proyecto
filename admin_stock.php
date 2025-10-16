@@ -18,30 +18,6 @@ header('Content-Type: text/html; charset=utf-8');
 $LOW_STOCK_LEVEL = 5;
 $msg = $err = '';
 
-// ---------- Crear variante (opcional: alta rápida) ----------
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_variant'])) {
-  try {
-    $pid   = (int)($_POST['product_id'] ?? 0);
-    $sku   = trim((string)($_POST['sku']   ?? ''));
-    $size  = trim((string)($_POST['size']  ?? ''));
-    $color = trim((string)($_POST['color'] ?? ''));
-    $stock = (int)($_POST['stock'] ?? 0);
-
-    if ($pid <= 0) throw new Exception('Producto inválido.');
-    // verificar que el producto exista
-    $st = $pdo->prepare("SELECT id FROM products WHERE id=? LIMIT 1");
-    $st->execute([$pid]);
-    if (!$st->fetchColumn()) throw new Exception('El producto no existe.');
-
-    $ins = $pdo->prepare("INSERT INTO product_variants (product_id, sku, size, color, stock) VALUES (?,?,?,?,?)");
-    $ins->execute([$pid, $sku, $size, $color, max(0,$stock)]);
-    $vid = (int)$pdo->lastInsertId();
-    $msg = "Variante creada (#{$vid}).";
-  } catch (Throwable $e) {
-    $err = 'Error al crear variante: ' . $e->getMessage();
-  }
-}
-
 // ---------- Actualización de stock ----------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update'])) {
   try {
@@ -170,8 +146,12 @@ $allColors = $pdo->query("
   .nowrap{ white-space:nowrap; }
   .topbar{ display:flex; gap:10px; align-items:center; margin-bottom:14px; }
   .topbar a{ color:#93c5fd; text-decoration:none; }
-  .split{ display:grid; gap:12px; grid-template-columns: 1fr; }
-  @media (min-width:900px){ .split{ grid-template-columns: 2fr 1fr; } }
+  /* deja TODO en una sola columna, siempre */
+.split{ display:grid; gap:12px; grid-template-columns: 1fr; }
+/* anula el cambio de 2 columnas en desktop */
+@media (min-width:900px){
+  .split{ grid-template-columns: 1fr !important; }
+}
   .card{ background:#0f172a; border:1px solid #243044; border-radius:12px; padding:12px; }
 </style>
 </head>
@@ -233,35 +213,7 @@ $allColors = $pdo->query("
       </form>
     </div>
 
-    <!-- Alta rápida de variante (opcional) -->
-    <div class="card">
-      <form method="post" class="bar" autocomplete="off">
-        <input type="hidden" name="create_variant" value="1">
-        <label>
-          ID Producto
-          <input type="number" name="product_id" min="1" required>
-        </label>
-        <label>
-          SKU
-          <input type="text" name="sku" placeholder="opcional">
-        </label>
-        <label>
-          Talle
-          <input type="text" name="size" placeholder="ej. S / M / L / U">
-        </label>
-        <label>
-          Color
-          <input type="text" name="color" placeholder="ej. negro">
-        </label>
-        <label>
-          Stock
-          <input type="number" name="stock" min="0" value="0">
-        </label>
-        <button class="btn">Crear variante</button>
-      </form>
-      <div class="muted" style="margin-top:6px;">Usá esto cuando cargás un producto nuevo y todavía no aparece en el listado.</div>
-    </div>
-  </div>
+    
 
   <div class="card" style="margin-top:12px;">
     <table>

@@ -8,6 +8,17 @@
   <!-- Fuente usada por pagina.css -->
   <link href="https://fonts.googleapis.com/css2?family=Lustria:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="pagina1.css">
+  <style>
+  /* FORZAR fondo de la portada */
+  html, body {
+    background:#a1a098;    /* ← tu color */
+  }
+  /* por si algún CSS agregó gradientes o overlays */
+  body::before, body::after {
+    content: none !important;
+  }
+</style>
+
 </head>
 <body>
 

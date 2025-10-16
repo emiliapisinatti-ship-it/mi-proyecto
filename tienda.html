@@ -7,13 +7,13 @@
 
   <!-- UI / Iconos -->
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Lustria:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" />
 
   <!-- Estilos / App -->
   <link rel="stylesheet" href="estilos.css" />
   <script src="script.js?v=build-2025-10-13-01" defer></script>
-
 </head>
 <body>
 
@@ -60,16 +60,19 @@
     <!-- CENTRO: logo -->
     <a class="logo" href="index.html">E&amp;S</a>
 
-    <!-- DERECHA: iconos -->
+    <!-- DERECHA: iconos (CORREGIDO: bolsa con id="bagBtn") -->
     <div class="icons">
-      <a class="icon-btn account" href="cliente_login.php" aria-label="Mi cuenta">
-        <span class="material-symbols-outlined">person</span>
-      </a>
-      <button class="icon-btn bag" aria-label="Carrito">
-        <span class="material-symbols-outlined">shopping_bag</span>
-        <span class="badge" id="bagCount">0</span>
-      </button>
-    </div>
+  <a class="icon-btn account" href="cliente_login.php" aria-label="Mi cuenta">
+    <span class="material-symbols-outlined">person</span>
+  </a>
+
+  <!-- Botón de la bolsa con IDs que usa el JS -->
+  <button id="bagBtn" class="icon-btn bag" aria-label="Carrito">
+    <span class="material-symbols-outlined">shopping_bag</span>
+    <span class="badge" id="bagCount">0</span>
+  </button>
+</div>
+
   </div>
 </header>
 
@@ -110,24 +113,6 @@
   <p style="text-align:center; padding:2rem;">Necesitás activar JavaScript para ver los productos.</p>
 </noscript>
 
-<!-- MINI-CARRITO -->
-<dialog id="cartDialog" class="modal">
-  <div class="modal-box w-11/12 max-w-2xl p-0 overflow-hidden">
-    <div class="cart-head flex items-center justify-between px-5 py-3">
-      <h3 class="text-white font-semibold text-lg">Tu carrito</h3>
-      <form method="dialog"><button class="btn btn-sm">Cerrar</button></form>
-    </div>
-    <div id="cartItems" class="divide-y divide-gray-200 max-h-[55vh] overflow-auto p-4 bg-white"></div>
-    <div class="bg-white/95 backdrop-blur border-t px-4 py-3 flex items-center justify-between sticky bottom-0">
-      <p class="text-base font-semibold">Total: <span id="cartTotal">$0</span></p>
-      <div class="flex gap-2">
-        <button id="clearCart" class="btn btn-ghost">Vaciar</button>
-        <button id="checkout" class="btn bg-[#7a4545] text-white hover:brightness-95">Finalizar compra</button>
-      </div>
-    </div>
-  </div>
-</dialog>
-
 <!-- DETALLE -->
 <dialog id="productDialog" class="modal">
   <div class="modal-box max-w-3xl p-0 overflow-hidden">
@@ -161,7 +146,7 @@
   </div>
 </dialog>
 
-<footer class="bg-gray-900 text-gray-200 py-10">
+<footer class="pie">
   <div class="container mx-auto px-4">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
       <div>
@@ -185,11 +170,7 @@
           <li>Teléfono: <a href="tel:+5492611234567" class="hover:text-white">+54 9 261 123-4567</a></li>
           <li>Dirección: San Martín 123, Mendoza, Argentina</li>
         </ul>
-        <div class="flex space-x-4 mt-4">
-          <a href="https://www.facebook.com" target="_blank" rel="noopener" class="hover:text-white"><svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"></svg></a>
-          <a href="https://www.instagram.com" target="_blank" rel="noopener" class="hover:text-white"><svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"></svg></a>
-          <a href="https://www.tiktok.com" target="_blank" rel="noopener" class="hover:text-white"><svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"></svg></a>
-        </div>
+        
       </div>
     </div>
 
@@ -204,9 +185,68 @@
   document.getElementById("anio-current").textContent = new Date().getFullYear();
 </script>
 
+<!-- MODAL CARRITO (ÚNICO) -->
+<dialog id="cartDlg" class="modal checkout-page">
+  <div class="modal-box p-0 overflow-hidden card-accent">
+    <!-- Header -->
+    <div class="cart-header px-6 py-4 flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-white">Tu carrito</h3>
+      <form method="dialog">
+        <button class="btn btn-sm btn-ghost">Cerrar</button>
+      </form>
+    </div>
+
+    <!-- Body -->
+    <div id="cartList" class="px-6 py-6 divide-y">
+      <!-- El JS insertará aquí los items o el estado vacío -->
+    </div>
+
+    <!-- Footer -->
+    <div class="px-6 py-4 flex items-center justify-between border-t">
+      <span class="font-semibold">Total: <span id="cartTotal">ARS 0</span></span>
+      <div class="flex gap-3">
+        <button id="clearCartBtn" class="btn btn-ghost">Vaciar</button>
+        <a href="checkout.php" class="btn btn-primary">Finalizar compra</a>
+      </div>
+    </div>
+  </div>
+</dialog>
+<script>
+  // Test directo del modal (independiente del resto del JS)
+  const __bagBtn   = document.getElementById('bagBtn');
+  const __cartDlg  = document.getElementById('cartDlg');
+  const __cartList = document.getElementById('cartList');
+  const __cartTotal= document.getElementById('cartTotal');
+
+  function __openMiniCart() {
+    // contenido de prueba por si no hay nada aún
+    if (__cartList && __cartTotal) {
+      __cartList.innerHTML = '<div class="empty">Tu carrito está vacío.</div>';
+      __cartTotal.textContent = 'ARS 0';
+    }
+    if (__cartDlg?.showModal) {
+      __cartDlg.showModal();
+    } else {
+      // Fallback si el browser no soporta <dialog>
+      __cartDlg?.setAttribute('open','');
+      document.documentElement.classList.add('modal-open');
+    }
+  }
+
+  __bagBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    __openMiniCart();
+  });
+
+  // Debug rápido en consola:
+  console.log('[carrito:test]', {
+    bagBtn: !!__bagBtn,
+    cartDlg: !!__cartDlg,
+    cartList: !!__cartList,
+    cartTotal: !!__cartTotal,
+    hasShowModal: typeof __cartDlg?.showModal === 'function'
+  });
+</script>
+
 </body>
 </html>
-
-
-
-

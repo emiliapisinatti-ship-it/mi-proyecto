@@ -1,122 +1,89 @@
 <?php
-// api/checkout.php  (drop-in)
-// Crea el pedido, descuenta stock y NO usa first_name en DB.
-// Si existe customers.last_name lo usa; si no, concatena en customers.name.
-
+// api/checkout.php — versión estable con try/catch y salida JSON
 declare(strict_types=1);
-header('Content-Type: application/json; charset=utf-8');
 
+header('Content-Type: application/json; charset=utf-8');
 session_start();
 require __DIR__ . '/db.php';
 
-function json_out($arr, int $code = 200) {
+function out($payload, int $code = 200) {
   http_response_code($code);
-  echo json_encode($arr, JSON_UNESCAPED_UNICODE);
+  echo json_encode($payload, JSON_UNESCAPED_UNICODE);
   exit;
 }
 
-// Reemplaza a la versión con SHOW COLUMNS
-function has_col(PDO $pdo, string $table, string $col): bool {
-  $sql = "SELECT 1
-          FROM INFORMATION_SCHEMA.COLUMNS
-          WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME  = ?
-            AND COLUMN_NAME = ?
-          LIMIT 1";
-  $st = $pdo->prepare($sql);
-  $st->execute([$table, $col]);
-  return (bool)$st->fetchColumn();
-}
-
 try {
+  if (!($pdo instanceof PDO)) out(['ok'=>false,'error'=>'DB no es PDO'], 500);
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+
+  // Leer body
   $raw = file_get_contents('php://input') ?: '';
   $in  = json_decode($raw, true);
-  if (!is_array($in)) $in = [];
+  if (!is_array($in)) out(['ok'=>false,'error'=>'Payload inválido'], 400);
 
-  /* ===== (PUNTO 5) Priorizar sesión si existe ===== */
-  $cid   = (int)($_SESSION['customer_id'] ?? 0);
-  // Si hay email en la sesión, ese manda; si no, tomo el del payload
-  $email = strtolower(trim((string)($_SESSION['customer_email'] ?? ($in['email'] ?? ''))));
-
-  // ===== Validaciones mínimas =====
-  // Si NO hay sesión, el email del payload es obligatorio y válido
-  if ($cid <= 0 && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    json_out(['ok'=>false, 'error'=>'Email inválido'], 400);
-  }
+  // Carrito
   $items = $in['items'] ?? [];
-  if (!is_array($items) || !$items) {
-    json_out(['ok'=>false, 'error'=>'Carrito vacío'], 400);
+  if (!is_array($items) || !$items) out(['ok'=>false,'error'=>'Carrito vacío'], 400);
+
+  // Identidad
+  $cid   = (int)($_SESSION['customer_id'] ?? 0);
+  $email = strtolower(trim((string)($_SESSION['customer_email'] ?? ($in['email'] ?? ''))));
+  if ($cid <= 0 && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    out(['ok'=>false,'error'=>'Email inválido'], 400);
   }
 
-  // Campos opcionales que vienen del form
-  $first = trim((string)($in['first_name'] ?? ''));
-  $last  = trim((string)($in['last_name']  ?? ''));
-  $nameFromForm = trim((string)($in['name'] ?? '')); // por si tu form manda "name"
-  $phone = trim((string)($in['phone'] ?? ''));
-  $addr  = trim((string)($in['address'] ?? ''));
-
-  // Detecto columnas reales en tu BD
-  $hasLast = has_col($pdo, 'customers', 'last_name'); // last_name opcional
-  // first_name no existe; NO lo usaremos en SQL
-
-  // ===== Busco o creo el cliente =====
+  // Buscar/crear cliente por email si no hay id
   if ($cid <= 0) {
     $st = $pdo->prepare("SELECT id FROM customers WHERE email=? LIMIT 1");
     $st->execute([$email]);
     $cid = (int)($st->fetchColumn() ?: 0);
-  }
-
-  // Preparo valores a guardar en customers
-  // Si tu tabla NO tiene last_name, guardo todo en customers.name
-  $nameToSave = $nameFromForm;
-  if ($nameToSave === '') {
-    $nameToSave = trim($first . ($last ? " $last" : ''));
-  }
-  if ($nameToSave === '') $nameToSave = null;
-
-  if ($cid > 0) {
-    // Update de datos básicos del cliente (no toca password)
-    if ($hasLast) {
-      $sql = "UPDATE customers SET name=?, last_name=?, phone=?, address=?, email=? WHERE id=?";
-      $pdo->prepare($sql)->execute([$first ?: ($nameToSave ?: null), $last ?: null, $phone ?: null, $addr ?: null, $email, $cid]);
-    } else {
-      $sql = "UPDATE customers SET name=?, phone=?, address=?, email=? WHERE id=?";
-      $pdo->prepare($sql)->execute([$nameToSave, $phone ?: null, $addr ?: null, $email, $cid]);
+    if ($cid <= 0) {
+      $pdo->prepare("INSERT INTO customers (email, name, phone, address) VALUES (?,?,?,?)")
+          ->execute([
+            $email,
+            trim((string)($in['first_name'] ?? '')),
+            trim((string)($in['phone'] ?? '')),
+            trim((string)($in['address'] ?? '')),
+          ]);
+      $cid = (int)$pdo->lastInsertId();
     }
-  } else {
-    // Insert nuevo cliente
-    if ($hasLast) {
-      $sql = "INSERT INTO customers (email, name, last_name, phone, address) VALUES (?,?,?,?,?)";
-      $pdo->prepare($sql)->execute([$email, $first ?: ($nameToSave ?: null), $last ?: null, $phone ?: null, $addr ?: null]);
-    } else {
-      $sql = "INSERT INTO customers (email, name, phone, address) VALUES (?,?,?,?)";
-      $pdo->prepare($sql)->execute([$email, $nameToSave, $phone ?: null, $addr ?: null]);
-    }
-    $cid = (int)$pdo->lastInsertId();
-    // Dejo logueado al nuevo cliente
     $_SESSION['customer_id']    = $cid;
     $_SESSION['customer_email'] = $email;
   }
 
-  // ===== Creo el pedido + descuento de stock =====
+  // Transacción
   $pdo->beginTransaction();
 
-  // 1) Pedido
-  // Estructura genérica: orders(id, customer_id, customer_email, status, created_at...)
-  $st = $pdo->prepare("INSERT INTO orders (customer_id, customer_email, status) VALUES (?, ?, 'pending')");
-  $st->execute([$cid ?: null, $email]);
+  // Crear pedido (status en minúscula o como uses en tu panel)
+  $pdo->prepare("INSERT INTO orders (customer_id, customer_email, status, created_at)
+                 VALUES (?, ?, 'pending', NOW())")
+      ->execute([$cid, $email]);
   $orderId = (int)$pdo->lastInsertId();
 
-  // 2) Ítems: valido y descuento stock con lock
+  // Preparados
   $getV = $pdo->prepare("
-    SELECT v.id AS variant_id, v.stock, p.price
+    SELECT v.id AS variant_id, v.product_id, v.stock, p.price
     FROM product_variants v
     JOIN products p ON p.id = v.product_id
-    WHERE v.id = ? FOR UPDATE
+    WHERE v.id = ?
+    FOR UPDATE
   ");
-  $updStock = $pdo->prepare("UPDATE product_variants SET stock = stock - ? WHERE id = ?");
-  $insItem  = $pdo->prepare("INSERT INTO order_items (order_id, variant_id, qty, price_unit) VALUES (?, ?, ?, ?)");
+  $decStock = $pdo->prepare("
+    UPDATE product_variants
+    SET stock = stock - ?
+    WHERE id = ? AND stock >= ?
+  ");
+  $insItem = $pdo->prepare("
+    INSERT INTO order_items (order_id, product_id, variant_id, qty, price_unit, price)
+    VALUES (?, ?, ?, ?, ?, ?)
+  ");
+  $insMov = $pdo->prepare("
+    INSERT INTO stock_movements (variant_id, delta, reason, order_id, created_at)
+    VALUES (?, ?, 'order', ?, NOW())
+  ");
 
+  // Ítems
   foreach ($items as $it) {
     $vid = (int)($it['variant_id'] ?? 0);
     $qty = max(1, (int)($it['qty'] ?? 0));
@@ -124,20 +91,45 @@ try {
 
     $getV->execute([$vid]);
     $row = $getV->fetch(PDO::FETCH_ASSOC);
-    if (!$row) throw new RuntimeException("Variante $vid no existe");
+    if (!$row) throw new RuntimeException("La variante $vid no existe");
 
-    $stock = (int)$row['stock'];
-    if ($stock < $qty) throw new RuntimeException("Sin stock para variante $vid");
+    $stock  = (int)$row['stock'];
+    $pid    = (int)$row['product_id'];
+    $punit  = (float)($row['price'] ?? 0);
+    if ($punit <= 0) throw new RuntimeException("Precio inválido para la variante $vid");
 
-    $updStock->execute([$qty, $vid]);
-    $insItem->execute([$orderId, $vid, $qty, (float)$row['price']]);
+    // Descontar stock atómico
+    $decStock->execute([$qty, $vid, $qty]);
+    if ($decStock->rowCount() === 0) throw new RuntimeException("Sin stock suficiente para la variante $vid (disp: $stock)");
+
+    // Guardar ítem (subtotal en price)
+    $subtotal = $qty * $punit;
+    $insItem->execute([$orderId, $pid, $vid, $qty, $punit, $subtotal]);
+
+    // Movimiento de stock (salida por venta)
+    $insMov->execute([$vid, -$qty, $orderId]);
   }
 
-  $pdo->commit();
+  // Recalcular total (posicionales para evitar HY093)
+  $recalc = $pdo->prepare("
+    UPDATE orders o
+    JOIN (
+      SELECT CAST(order_id AS SIGNED) AS oid,
+             SUM(CASE WHEN price_unit IS NOT NULL AND price_unit > 0
+                      THEN qty * price_unit ELSE price END) AS total_calc
+      FROM order_items
+      WHERE CAST(order_id AS SIGNED) = ?
+      GROUP BY order_id
+    ) t ON t.oid = o.id
+    SET o.total = t.total_calc
+    WHERE o.id = ?
+  ");
+  $recalc->execute([$orderId, $orderId]);
 
-  json_out(['ok'=>true, 'order_id'=>$orderId]);
+  $pdo->commit();
+  out(['ok'=>true,'order_id'=>$orderId,'status'=>'pending']);
 
 } catch (Throwable $e) {
-  if ($pdo->inTransaction()) $pdo->rollBack();
-  json_out(['ok'=>false, 'error'=>'Error al finalizar la compra: '.$e->getMessage()], 500);
+  if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+  out(['ok'=>false,'error'=>'Error al finalizar la compra: '.$e->getMessage()], 500);
 }

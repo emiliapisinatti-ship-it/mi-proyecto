@@ -5,7 +5,7 @@ html, body { height: 100%; }
 body{
   margin: 0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  background: #7f7878;             /* tu fondo de portada */
+  background: #cdc6c6;             /* tu fondo de portada */
   color: #111;
 }
 
@@ -28,7 +28,8 @@ main{
 /* Título (más arriba y menos espacio con imágenes) */
 .logo{
   text-align: center;
-  margin: 24px 0 6px;              /* arriba 24, abajo 6 (menos gap) */
+  margin: 24px 0 6px;    
+       /* arriba 24, abajo 6 (menos gap) */
 }
 .logo h1{
   font-family: "Lustria", serif;

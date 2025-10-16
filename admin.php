@@ -13,11 +13,13 @@ if (empty($_SESSION['admin_id'])) {
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 text-slate-900 max-w-6xl mx-auto p-4">
-
-  <div class="flex items-center justify-between">
-    <h1 class="text-2xl font-bold mb-4">Panel de productos</h1>
+<header class="container mx-auto flex items-center justify-between py-6">
+  <h1 class="text-2xl font-bold">Panel de productos</h1>
+  <nav class="flex items-center gap-6 justify-end">
     <a href="admin_stock.php" class="underline text-sm">Gestión de stock</a>
-  </div>
+    <a href="admin_orders.html" class="underline text-sm">Gestión de pedidos</a>
+  </nav>
+</header>
 
   <!-- Alta -->
   <section class="bg-white rounded-xl shadow p-4 mb-8">
@@ -70,7 +72,7 @@ if (empty($_SESSION['admin_id'])) {
   <script>
     // Endpoints
     // Solo activos por defecto para que no aparezcan los que tienen imagen rota
-    const API_LIST   = 'api/products.php?admin=1&only_active=1';
+    const API_LIST   = 'api/products.php?admin=1';  // sin only_active
     const API_ADD    = 'api/add_product.php';
     const API_TOGGLE = 'api/toggle_active.php';
     const API_DELETE = 'api/delete_product.php';   // soft delete (active=0)
@@ -157,6 +159,8 @@ if (empty($_SESSION['admin_id'])) {
           e.target.checked = !e.target.checked;
         } else {
           e.target.nextElementSibling.textContent = activo ? 'Sí' : 'No';
+          row.dataset.active = String(activo);           // para que el DOM refleje el estado
++ row.classList.toggle('is-inactive', !activo);  // por si tenés estilos visuales
         }
         return;
       }
@@ -187,5 +191,82 @@ if (empty($_SESSION['admin_id'])) {
     document.getElementById('reload').addEventListener('click', loadProducts);
     loadProducts();
   </script>
+  <script>
+const API_LIST   = new URL('api/admin_orders.php', location.href).toString();
+const API_STATUS = new URL('api/order_status.php', location.href).toString();
+
+const tbody   = document.querySelector('#tblOrders tbody');
+const fStatus = document.getElementById('fStatus');
+const fQ      = document.getElementById('fQ');
+const btnBusc = document.getElementById('btnBuscar');
+
+btnBusc.addEventListener('click', loadOrders);
+fStatus.addEventListener('change', loadOrders);
+
+async function loadOrders() {
+  const url = new URL(API_LIST);
+  if (fStatus.value) url.searchParams.set('status', fStatus.value);
+  if (fQ.value.trim()) url.searchParams.set('q', fQ.value.trim());
+
+  const res = await fetch(url, { credentials: 'include' });
+  const json = await res.json();
+  if (!json.ok) { alert(json.error || 'Error'); return; }
+
+  tbody.innerHTML = '';
+  json.data.forEach(row => {
+    const badgeClass =
+      row.status === 'pending'   ? 'badge-warning' :
+      row.status === 'shipped'   ? 'badge-success' :
+                                   'badge-error';
+
+    const cliente = row.customer_name || row.customer_email || '-';
+    const sub     = [row.customer_email, row.customer_phone].filter(Boolean).join(' · ');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="font-mono">#${row.id}</td>
+      <td>
+        <div class="font-medium">${cliente}</div>
+        <div class="text-xs opacity-70">${sub}</div>
+      </td>
+      <td>${row.items}</td>
+      <td>$ ${Number(row.total).toLocaleString()}</td>
+      <td><span class="badge ${badgeClass}">${row.status}</span></td>
+      <td>${row.created_at}</td>
+      <td>
+        <div class="join">
+          <button class="btn btn-xs join-item" data-st="pending">Pendiente</button>
+          <button class="btn btn-xs join-item" data-st="shipped">Enviado</button>
+          <button class="btn btn-xs join-item" data-st="cancelled">Cancelado</button>
+        </div>
+      </td>
+    `;
+
+    tr.querySelectorAll('button[data-st]').forEach(btn => {
+      btn.addEventListener('click', () => updateStatus(row.id, btn.dataset.st));
+    });
+
+    tbody.appendChild(tr);
+  });
+}
+
+async function updateStatus(orderId, status) {
+  if (!confirm(`Cambiar pedido #${orderId} a "${status}"?`)) return;
+
+  const res = await fetch(API_STATUS, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    credentials: 'include',
+    body: JSON.stringify({ order_id: orderId, status })
+  });
+  const json = await res.json();
+  if (!json.ok) { alert(json.error || 'No se pudo actualizar'); return; }
+  loadOrders();
+}
+
+// Carga inicial
+loadOrders();
+</script>
+
 </body>
 </html>

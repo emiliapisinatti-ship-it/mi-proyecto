@@ -28,14 +28,91 @@ if (empty($_SESSION['customer_id']) && empty($_SESSION['cliente_id'])) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+ /* ===== Checkout claro y suave ===== */
+:root{
+  --accent:   #7a4545;
+  --accent-2: #9b8681;
+  --panel:    #f7f9fc;
+  --panel-br: #e5e7ef;
+  --ink:      #0f172a;
+}
+
+.checkout-page{ background:#eef2f7; color:var(--ink); }
+
+/* Caja del modal / tarjetas */
+.card-accent{
+  background:var(--panel);
+  border:1px solid var(--panel-br);
+  color:var(--ink);
+  box-shadow:0 6px 20px rgba(0,0,0,.06);
+}
+
+/* Header del modal (degradé “vino”) */
+.cart-header{
+  background:linear-gradient(90deg, #b86a6a, #6e2f2f);
+  color:#fff;
+}
+
+/* Divisores dentro del carrito */
+.card-accent .divide-y > *{ border-color:#e5e7eb !important; }
+
+/* Inputs claros + foco suave */
+.card-accent .label-text{ color:#475569; font-weight:600; }
+.card-accent .input,
+.card-accent input,
+.card-accent textarea,
+.card-accent select{
+  background:#ffffff !important;
+  border:1px solid #cbd5e1 !important;
+  color:#0f172a !important;
+  border-radius:12px;
+}
+.card-accent .input::placeholder{ color:#94a3b8; }
+.card-accent .input:focus{
+  outline:none;
+  border-color:#94a3b8 !important;
+  box-shadow:0 0 0 3px rgba(148,163,184,.25);
+}
+
+/* Botón principal */
+.btn.btn-primary,
+.btn-primary{
+  background:linear-gradient(135deg,var(--accent),var(--accent-2)) !important;
+  border:0 !important;
+  color:#fff !important;
+  border-radius:12px;
+}
+.btn.btn-primary:hover,
+.btn-primary:hover{ filter:brightness(1.03); }
+
+/* Botón secundario estilo ghost suave */
+.btn-ghost{
+  border:1px solid rgba(15,23,42,.08) !important;
+  color:var(--ink) !important;
+  background:transparent !important;
+}
+.btn-ghost:hover{ background:rgba(15,23,42,.04) !important; }
+
+/* Estado vacío */
+.empty{ color:#64748b; text-align:center; padding:2rem 0; }
+
+/* Mini utilidades item */
+.cart-thumb{ width:56px; height:56px; object-fit:cover; border-radius:.5rem; }
+.cart-name{ font-weight:600; }
+.cart-price{ opacity:.85; font-size:.875rem; }
+
+
+</style>
+
 </head>
-<body class="min-h-screen bg-slate-100">
+<body class="min-h-screen checkout-page">
   <div class="max-w-3xl mx-auto p-6">
     <h1 class="text-2xl font-bold mb-4">Finalizar compra</h1>
 
-    <div id="cartView" class="bg-white rounded-xl shadow p-4 mb-6"></div>
+    <div id="cartView" class="card-accent rounded-xl p-4 mb-6"></div>
 
-    <form id="chkForm" class="bg-white rounded-xl shadow p-4 grid gap-3">
+    <form id="chkForm" class="card-accent rounded-xl p-4 grid gap-3">
       <div class="grid gap-2 md:grid-cols-2">
         <label class="form-control">
           <span class="label-text">Nombre</span>
@@ -63,8 +140,8 @@ if (empty($_SESSION['customer_id']) && empty($_SESSION['cliente_id'])) {
         </label>
       </div>
 
-      <button class="btn btn-neutral mt-2">Confirmar pedido</button>
-      <a class="link" href="tienda.html">← Volver a la tienda</a>
+     <button class="btn btn-primary mt-2 w-full">Confirmar pedido</button>
+      <a class="back-link" href="tienda.html">← Volver a la tienda</a>
     </form>
   </div>
 
@@ -100,11 +177,15 @@ function renderCart(){
 }
 renderCart();
 
+// === SUBMIT checkout: leer texto -> intentar JSON y mostrar respuesta cruda si falla ===
 document.getElementById('chkForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
+
   const cart = loadCart();
   if (!cart.length){ alert('Tu carrito está vacío'); return; }
-  const faltan = cart.filter(it => !it.variant_id);
+
+  // Asegurar que cada item tenga variant_id (o que el id del carrito sea la variante)
+  const faltan = cart.filter(it => !Number(it.variant_id || it.id));
   if (faltan.length){
     alert('Falta elegir talle/color en:\n\n' + faltan.map(i => '• ' + i.name).join('\n'));
     return;
@@ -117,7 +198,10 @@ document.getElementById('chkForm').addEventListener('submit', async (e)=>{
     last_name:  (fd.get('last_name')||'').trim(),
     phone:      (fd.get('phone')||'').trim(),
     address:    (fd.get('address')||'').trim(),
-    items: cart.map(it => ({ variant_id: Number(it.variant_id), qty: Number(it.qty||1) })),
+    items: cart.map(it => ({
+      variant_id: Number(it.variant_id || it.id), // fallback por si tu carrito guardó el id de la variante en "id"
+      qty: Number(it.qty||1)
+    })),
     idempotency_key: (crypto?.getRandomValues ? crypto.getRandomValues(new Uint32Array(4)).join('-') : String(Date.now()))
   };
 
@@ -127,16 +211,35 @@ document.getElementById('chkForm').addEventListener('submit', async (e)=>{
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload)
     });
-    const raw = await res.text();
-    const i = Math.min(...[raw.indexOf('{'), raw.indexOf('[')].filter(n => n >= 0));
-    const data = JSON.parse(i >= 0 ? raw.slice(i) : raw);
-    if (!res.ok || !data.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+
+    // SIEMPRE leer como texto primero
+    const txt = await res.text();
+
+    // Intentar parsear JSON (soporta si el servidor mete BOM/HTML antes)
+    let data;
+    try {
+      const i = Math.min(...[txt.indexOf('{'), txt.indexOf('[')].filter(n => n >= 0));
+      data = JSON.parse(i >= 0 ? txt.slice(i) : txt);
+    } catch(parseErr) {
+      console.error('Respuesta checkout NO-JSON:', txt);
+      alert('El servidor no devolvió JSON.\n\nRespuesta:\n' + txt.slice(0, 800));
+      throw parseErr;
+    }
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || `HTTP ${res.status}`);
+    }
+
     alert('¡Pedido confirmado! #' + data.order_id);
-    saveCart([]); location.href = 'cuenta.php';
-  }catch(err){
+    saveCart([]); 
+    location.href = 'cuenta.php';
+  } catch (err) {
     alert('Error al finalizar la compra: ' + (err?.message || err));
   }
 });
+
+
+  
 </script>
 </body>
 </html>

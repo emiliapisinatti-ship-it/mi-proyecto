@@ -101,7 +101,7 @@ $hasReset = is_file(__DIR__ . '/request_reset.php');
       background:
         radial-gradient(1200px 700px at 80% -10%, rgba(122,69,69,.20) 0%, transparent 60%),
         radial-gradient(900px 600px at -10% 100%, rgba(122,69,69,.33) 0%, transparent 60%),
-        #1f262c;
+   #a1a098; ;
     }
     .glass-card{
       background: rgba(255,255,255,.92);

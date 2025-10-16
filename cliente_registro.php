@@ -142,16 +142,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_register'])) {
     body{
       min-height:100svh;
       background:
-        radial-gradient(1200px 700px at 80% -10%, rgba(122,69,69,.20) 0%, transparent 60%),
-        radial-gradient(900px 600px at -10% 100%, rgba(122,69,69,.33) 0%, transparent 60%),
-        #1f262c;
+        radial-gradient(1200px 700px at 80% -10%, rgba(227, 227, 227, 0.2) 0%, transparent 60%),
+        radial-gradient(900px 600px at -10% 100%, rgba(182, 135, 135, 0.33) 0%, transparent 60%),
+        #a1a098;;
     }
     .glass-card{
       background: rgba(255,255,255,.92);
       -webkit-backdrop-filter: blur(10px);
       backdrop-filter: blur(10px);
       border:1px solid rgba(255,255,255,.4);
-      box-shadow:0 20px 60px rgba(0,0,0,.25);
+      box-shadow:0 20px 60px rgba(243, 229, 229, 0.25);
     }
     .brand{
       font-family:Verdana, Geneva, Tahoma, sans-serif;
@@ -162,9 +162,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_register'])) {
       outline:2px solid rgba(122,69,69,.45);
       outline-offset:2px;
     }
+ 
   </style>
 </head>
 <body class="grid place-items-center">
+<body class="signup-page">
 
   <nav class="fixed top-4 left-4">
     <a href="cliente_login.php<?= $next ? ('?next='.urlencode($next)) : '' ?>"

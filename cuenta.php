@@ -19,7 +19,6 @@ $hasLastName = (bool)$st->fetch();
 if ($hasLastName) {
   $st = $pdo->prepare("SELECT email, name, last_name, phone, address FROM customers WHERE id = ?");
 } else {
-  // compatibilidad si aún no agregaste la columna
   $st = $pdo->prepare("SELECT email, name, '' AS last_name, phone, address FROM customers WHERE id = ?");
 }
 $st->execute([$cid]);
@@ -85,10 +84,23 @@ $sql = "
   GROUP BY o.id
   ORDER BY o.created_at DESC
 ";
-
 $st = $pdo->prepare($sql);
 $st->execute([':cid' => $cid, ':email' => $email]);
 $orders = $st->fetchAll(PDO::FETCH_ASSOC);
+
+/* -------- Chips de estado -------- */
+function render_status_chip(string $status): string {
+  $s = strtolower($status);
+  // paleta suave
+  $map = [
+    'pending'   => ['Pendiente', 'chip chip--pendiente'],
+    'shipped'   => ['Enviado',   'chip chip--enviado'],
+    'cancelled' => ['Cancelado', 'chip chip--cancelado'],
+  ];
+  $label = $map[$s][0] ?? ucfirst($s);
+  $cls   = $map[$s][1] ?? 'chip';
+  return '<span class="'.$cls.'">'.$label.'</span>';
+}
 ?>
 <!doctype html>
 <html lang="es">
@@ -98,12 +110,126 @@ $orders = $st->fetchAll(PDO::FETCH_ASSOC);
   <title>Mi cuenta • E&amp;S</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+  /* ==== Paleta clara y suave (compartida con checkout) ==== */
+  :root{
+    --accent:   #7a4545;
+    --accent2:  #9b8681;
+    --panel:    #f7f9fc;    /* tarjetas claritas */
+    --panel-br: #e5e7ef;    /* borde suave */
+    --ink:      #0f172a;    /* texto oscuro */
+  }
+
+  
+  /* Fondo gris medio oscuro, sin ser negro */
+.account-page{
+  background:#a1a098;   /* gris medio-oscuro */
+  color:var(--ink);
+}
+
+/* Ajusto las tarjetas para que destaquen sobre el fondo */
+.card-accent{
+  background:#f7f9fc;
+  border:1px solid #d1d5db;
+  color:#111827;
+  border-radius:14px;
+  box-shadow:0 8px 25px rgba(239, 238, 238, 0.25);
+}
+
+
+  /* Título con toque de color, sutil */
+  h1{
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+
+  /* Tarjetas */
+  .card-accent{
+    background:var(--panel);
+    border:1px solid var(--panel-br);
+    color:var(--ink);
+    border-radius:14px;
+    box-shadow:0 6px 20px rgba(0,0,0,.06);
+  }
+
+  /* Labels + inputs */
+  .card-accent label{ color:#475569; font-weight:600; }
+  .card-accent .input,
+  .card-accent input,
+  .card-accent textarea,
+  .card-accent select{
+    background:#fff !important;
+    border:1px solid #cbd5e1 !important;
+    color:#0f172a !important;
+    border-radius:12px;
+  }
+  .card-accent .input::placeholder{ color:#94a3b8; }
+  .card-accent .input:focus{
+    outline:none;
+    border-color:#94a3b8 !important;
+    box-shadow:0 0 0 3px rgba(148,163,184,.25);
+  }
+
+  /* Botón principal (acento suave) */
+  .btn-primary{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    border:0; color:#fff; border-radius:12px;
+  }
+  .btn-primary:hover{ filter:brightness(1.03); }
+
+  /* Chips de estado (suaves) */
+  .chip{ display:inline-block; padding:.28rem .6rem; border-radius:999px; font-weight:700; font-size:.9rem; }
+  .chip--pendiente{ background:#f2c97a; color:#2a1d08; }
+  .chip--enviado{   background:#8bd3b0; color:#103327; }
+  .chip--cancelado{ background:#f29b9b; color:#341010; }
+
+  /* Total visible pero no chillón */
+  .order-total{ font-weight:800; color:#0f172a; }
+
+  /* Fecha y “Ver ítems” más apagados */
+  .order-date, .order-toggle{ color:#708199; opacity:.9; font-size:.92rem; }
+  .order-toggle:hover{ opacity:1; text-decoration:underline; }
+
+  /* Bordes internos */
+  .card-accent .border,
+  .card-accent .divide-y > *{ border-color:#e5e7eb; }
+  /* Título claro sobre fondo oscuro */
+.account-page h1{
+  /* opción A: texto sólido claro */
+  color:#f3f4f6;                  /* bien legible */
+  background:none;                /* anula el degradé anterior */
+  text-shadow:0 1px 0 rgba(0,0,0,.3);
+  letter-spacing:.2px;
+}
+
+/* Si preferís mantener degradé, comenta lo de arriba y usá esta opción B:
+.account-page h1{
+  background:linear-gradient(90deg,#ffd7cc,#ffe7d9);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  text-shadow:0 1px 0 rgba(0,0,0,.35);
+}
+*/
+
+/* Link “Cerrar sesión” visible */
+.account-page .logout-link{
+  color:#e5e7eb;                  /* claro */
+  font-weight:600;
+  text-underline-offset:2px;
+}
+.account-page .logout-link:hover{ color:#ffffff; }
+.account-page .logout-link:focus-visible{
+  outline:2px solid #ffffff; outline-offset:2px; border-radius:4px;
+}
+
+  </style>
 </head>
-<body class="bg-slate-100 min-h-screen">
+
+<body class="account-page">
   <div class="max-w-3xl mx-auto p-6">
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-2xl font-bold">Mi cuenta</h1>
-      <a class="underline text-sm" href="cliente_logout.php">Cerrar sesión</a>
+      <a class="underline text-sm logout-link" href="cliente_logout.php">Cerrar sesión</a>
     </div>
 
     <?php if ($msg): ?>
@@ -114,59 +240,63 @@ $orders = $st->fetchAll(PDO::FETCH_ASSOC);
     <?php endif; ?>
 
     <!-- Perfil -->
-    <div class="bg-white rounded-xl shadow p-4 mb-6">
+    <div class="card-accent p-5 mb-6">
       <form method="post" class="grid md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm text-slate-600 mb-1">Nombre</label>
+          <label class="block text-sm mb-1">Nombre</label>
           <input class="input input-bordered w-full" type="text" name="name" required
                  value="<?= htmlspecialchars((string)$me['name']) ?>">
         </div>
         <div>
-          <label class="block text-sm text-slate-600 mb-1">Apellido</label>
+          <label class="block text-sm mb-1">Apellido</label>
           <input class="input input-bordered w-full" type="text" name="last_name"
                  value="<?= htmlspecialchars((string)$me['last_name']) ?>">
         </div>
         <div class="md:col-span-2">
-          <label class="block text-sm text-slate-600 mb-1">Email</label>
+          <label class="block text-sm mb-1">Email</label>
           <input class="input input-bordered w-full" type="email" name="email" required
                  value="<?= htmlspecialchars((string)($me['email'] ?: $email)) ?>">
         </div>
         <div>
-          <label class="block text-sm text-slate-600 mb-1">Teléfono</label>
+          <label class="block text-sm mb-1">Teléfono</label>
           <input class="input input-bordered w-full" type="text" name="phone"
                  value="<?= htmlspecialchars((string)$me['phone']) ?>">
         </div>
         <div>
-          <label class="block text-sm text-slate-600 mb-1">Dirección</label>
+          <label class="block text-sm mb-1">Dirección</label>
           <input class="input input-bordered w-full" type="text" name="address"
                  value="<?= htmlspecialchars((string)$me['address']) ?>">
         </div>
         <div class="md:col-span-2 flex justify-end gap-2">
-          <button class="btn" type="submit" name="profile_save" value="1">Guardar cambios</button>
+          <button class="btn btn-primary" type="submit" name="profile_save" value="1">Guardar cambios</button>
         </div>
       </form>
     </div>
 
     <!-- Pedidos -->
-    <div class="bg-white rounded-xl shadow p-4">
+    <div class="card-accent p-5">
       <h2 class="font-semibold mb-2">Mis pedidos</h2>
 
       <?php if (!$orders): ?>
-        <p class="text-slate-500">Aún no hay pedidos.</p>
+        <p class="text-slate-600">Aún no hay pedidos.</p>
       <?php else: ?>
         <ul class="space-y-4">
           <?php foreach ($orders as $o): ?>
             <li class="border p-3 rounded-lg">
               <div class="flex items-center justify-between">
                 <div>
-                  <div><strong>#<?= (int)$o['id'] ?></strong> · <?= htmlspecialchars((string)$o['status']) ?></div>
-                  <div class="text-slate-500 text-sm"><?= date('d/m/Y H:i', strtotime($o['created_at'])) ?></div>
+                  <div>
+                    <strong>#<?= (int)$o['id'] ?></strong>
+                    · <?= render_status_chip((string)$o['status']) ?>
+                  </div>
+                  <div class="order-date"><?= date('d/m/Y H:i', strtotime($o['created_at'])) ?></div>
                 </div>
-                <div class="font-semibold">ARS <?= number_format((float)$o['total'], 0, ',', '.') ?></div>
+                <div class="order-total">
+                  ARS <?= number_format((float)$o['total'], 0, ',', '.') ?>
+                </div>
               </div>
 
               <?php
-              // Ítems con precio robusto (price_unit o price)
               $it = $pdo->prepare("
                 SELECT
                   p.name,
@@ -185,7 +315,7 @@ $orders = $st->fetchAll(PDO::FETCH_ASSOC);
 
               <?php if ($items): ?>
                 <details class="mt-2">
-                  <summary class="cursor-pointer text-sm text-slate-600">Ver ítems</summary>
+                  <summary class="order-toggle">Ver ítems</summary>
                   <ul class="mt-2 space-y-1 text-sm">
                     <?php foreach ($items as $row): ?>
                       <li>

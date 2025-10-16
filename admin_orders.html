@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de pedidos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet">
+</head>
+<body class="bg-base-200">
+  <header class="container mx-auto flex justify-between items-center py-6">
+    <h1 class="text-2xl font-bold">Gestión de pedidos</h1>
+   
+
+  <!-- SOLO volver al inicio -->
+  <a href="admin.php" class="btn btn-sm">
+    ⟵ Volver al inicio
+  </a>
+</header>
+
+  </header>
+
+  <main class="container mx-auto p-4">
+    <div class="flex gap-2 mb-3">
+      <select id="fStatus" class="select select-bordered">
+        <option value="">Todos</option>
+        <option value="Pendiente">Pendientes</option>
+        <option value="Enviado">Enviados</option>
+        <option value="Cancelado">Cancelados</option>
+      </select>
+      <input id="fQ" class="input input-bordered" placeholder="Buscar por email o #ID">
+      <button id="btnBuscar" class="btn">Buscar</button>
+    </div>
+
+    <div class="overflow-x-auto bg-base-100 rounded-xl shadow">
+      <table class="table w-full" id="tblOrders">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Cliente</th>
+            <th>Ítems</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Creado</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+  const API_LIST   = new URL('api/admin_orders.php', location.href).toString();
+  const API_STATUS = new URL('api/order_status.php', location.href).toString();
+
+  const tbody   = document.querySelector('#tblOrders tbody');
+  const fStatus = document.getElementById('fStatus');
+  const fQ      = document.getElementById('fQ');
+  const btnBusc = document.getElementById('btnBuscar');
+
+  btnBusc.addEventListener('click', loadOrders);
+  fStatus.addEventListener('change', loadOrders);
+
+  async function loadOrders() {
+    const url = new URL(API_LIST);
+    if (fStatus.value) url.searchParams.set('status', fStatus.value);
+    if (fQ.value.trim()) url.searchParams.set('q', fQ.value.trim());
+
+    const res = await fetch(url, { credentials: 'include' });
+    const json = await res.json();
+    if (!json.ok) { alert(json.error || 'Error'); return; }
+
+    tbody.innerHTML = '';
+    json.data.forEach(row => {
+      const badgeClass =
+        row.status === 'Pendiente'   ? 'badge-warning' :
+        row.status === 'Enviado'   ? 'badge-success' :
+                                     'badge-error';
+
+      const cliente = row.customer_name || row.customer_email || '-';
+      const sub     = [row.customer_email, row.customer_phone].filter(Boolean).join(' · ');
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="font-mono">#${row.id}</td>
+        <td>
+          <div class="font-medium">${cliente}</div>
+          <div class="text-xs opacity-70">${sub}</div>
+        </td>
+        <td>${row.items}</td>
+        <td>$ ${Number(row.total).toLocaleString()}</td>
+        <td><span class="badge ${badgeClass}">${row.status}</span></td>
+        <td>${row.created_at}</td>
+        <td>
+          <div class="join">
+            <button class="btn btn-xs join-item" data-st="Pendiente">Pendiente</button>
+            <button class="btn btn-xs join-item" data-st="Enviado">Enviado</button>
+            <button class="btn btn-xs join-item" data-st="Cancelado">Cancelado</button>
+
+          </div>
+        </td>
+      `;
+      tr.querySelectorAll('button[data-st]').forEach(btn => {
+        btn.addEventListener('click', () => updateStatus(row.id, btn.dataset.st));
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function updateStatus(orderId, status) {
+    if (!confirm(`Cambiar pedido #${orderId} a "${status}"?`)) return;
+    const res = await fetch(API_STATUS, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({ order_id: orderId, status })
+    });
+    const json = await res.json();
+    if (!json.ok) { alert(json.error || 'No se pudo actualizar'); return; }
+    loadOrders();
+  }
+
+  loadOrders();
+  </script>
+</body>
+</html>

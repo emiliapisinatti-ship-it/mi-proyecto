@@ -1,7 +1,7 @@
 // BUILD 2025-10-13-01
 console.log('Cargando JS NUEVO: BUILD 2025-10-13-01');
 
-//* ========= Config ========= *//
+/* ========= Config ========= */
 // Endpoints PHP (serví por http://localhost..., no file://)
 const API          = new URL('api/products.php',  location.href).toString();
 const CHECKOUT_API = new URL('api/checkout.php',  location.href).toString();
@@ -21,14 +21,13 @@ const pdSizes   = document.getElementById('pdSizes');
 const pdThumbs  = document.getElementById('pdThumbs');
 const pdAddBtn  = document.getElementById('pdAdd');
 
-// Mini-carrito
-const bagBtn    = document.querySelector('.icon-btn.bag');
-const bagCnt    = document.getElementById('bagCount');
-const cartDlg   = document.getElementById('cartDialog');
-const cartList  = document.getElementById('cartItems');
-const cartTotal = document.getElementById('cartTotal');
-const clearCartBtn = document.getElementById('clearCart');
-const checkoutBtn  = document.getElementById('checkout');
+/* ========= Refs del carrito ========= */
+const bagBtn       = document.getElementById('bagBtn');
+const bagCount     = document.getElementById('bagCount');
+const cartDlg      = document.getElementById('cartDlg');
+const cartList     = document.getElementById('cartList');
+const cartTotal    = document.getElementById('cartTotal');
+const clearCartBtn = document.getElementById('clearCartBtn');
 
 /* ========= Estado ========= */
 const state = { category: '', kind: '', size: '', color: '' };
@@ -37,7 +36,7 @@ let CURRENT_PROD  = null;
 let SELECTED      = { size: null, color: null };
 
 /* ========= Utils ========= */
-const money = n => `ARS ${Number(n||0).toLocaleString('es-AR')}`;
+const money = (n) => `ARS ${Number(n || 0).toLocaleString('es-AR')}`;
 const csv   = s => String(s||'').split(',').map(x=>x.trim()).filter(Boolean);
 const clean = o => Object.fromEntries(Object.entries(o).filter(([,v]) => v != null && String(v).trim() !== ''));
 const toAbs = p => new URL(String(p||'').replace(/^\/+/, ''), location.href).toString();
@@ -50,12 +49,43 @@ function normalizeImg(it){
 function getProductById(id){ return LAST_PRODUCTS.find(x => String(x.id) === String(id)); }
 function hasVariants(prod){ return Array.isArray(prod?.variants) && prod.variants.length > 0; }
 
+/* ========= Storage robusto (cart) ========= */
+const CART_KEY = 'cart:tienda';
+
+function loadCart() {
+  const keys = [CART_KEY, 'cart: tienda', 'cart', 'cart_shop']; // por si quedó viejo
+  for (const k of keys) {
+    const raw = localStorage.getItem(k);
+    if (!raw) continue;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;                 // array directo
+      if (parsed && Array.isArray(parsed.items)) return parsed.items; // {items:[...]}
+      if (typeof parsed === 'string') {                         // doble stringify
+        const again = JSON.parse(parsed);
+        if (Array.isArray(again)) return again;
+        if (again && Array.isArray(again.items)) return again.items;
+      }
+    } catch (_) {}
+  }
+  return [];
+}
+
+function saveCart(arr) {
+  try { localStorage.setItem(CART_KEY, JSON.stringify(Array.isArray(arr) ? arr : [])); }
+  catch(_) {}
+}
+
+function updateBagCount() {
+  if (!bagCount) return;
+  const total = loadCart().reduce((a, it) => a + Number(it?.qty || 0), 0);
+  bagCount.textContent = total;
+}
+
 /* ========= Arranque ========= */
 document.addEventListener('DOMContentLoaded', () => {
   loadProducts(state);
   updateBagCount();
-
-  // (Opcional) si volvemos con ?go=checkout, abrir el mini-carrito
   const qs = new URLSearchParams(location.search);
   if (qs.get('go') === 'checkout') bagBtn?.click();
 });
@@ -67,9 +97,9 @@ menu?.addEventListener('click', async (e) => {
   e.preventDefault(); e.stopPropagation();
 
   if (a.dataset.clear) { state.kind = state.size = state.color = ''; }
-  if (a.dataset.kind)  state.kind  = a.dataset.kind;    // remeras | pantalones | vestidos
-  if (a.dataset.size)  state.size  = a.dataset.size;    // XS | S | M | L | U
-  if (a.dataset.color) state.color = a.dataset.color;   // negro | blanco | rojo | ...
+  if (a.dataset.kind)  state.kind  = a.dataset.kind;
+  if (a.dataset.size)  state.size  = a.dataset.size;
+  if (a.dataset.color) state.color = a.dataset.color;
 
   await loadProducts(state);
   menu.open = false;
@@ -85,7 +115,6 @@ async function loadProducts(filters = {}) {
     const res  = await fetch(url, { cache: 'no-store' });
     const text = await res.text();
 
-    // si PHP imprime warnings, “limpiamos” antes de parsear
     const i = text.indexOf('[') >= 0 ? text.indexOf('[') : text.indexOf('{');
     const data = JSON.parse(i >= 0 ? text.slice(i) : text);
 
@@ -95,10 +124,9 @@ async function loadProducts(filters = {}) {
       return;
     }
 
-    // normalizo variantes si vienen nulas
     LAST_PRODUCTS = data.map(p => ({
       ...p,
-      variants: Array.isArray(p.variants) ? p.variants : []  // cada v: {id,size,color,stock}
+      variants: Array.isArray(p.variants) ? p.variants : []
     }));
 
     renderGrid(LAST_PRODUCTS);
@@ -182,14 +210,12 @@ function openDetail(prod){
   if (pdName)  pdName.textContent  = name;
   if (pdPrice) pdPrice.textContent = money(price);
 
-  // galería
   const gal = buildGallery(prod);
   if (pdImg) { pdImg.src = gal[0]; pdImg.alt = name; }
   if (pdThumbs) {
     pdThumbs.innerHTML = gal.map((src,i)=>`<img src="${src}" class="pd-thumb ${i? '': 'is-active'}" data-idx="${i}">`).join('');
   }
 
-  // armo listas desde variantes si existen
   let colors = csv(prod.color ?? prod.colores);
   let sizes  = csv(prod.sizes ?? prod.talles);
   if (hasVariants(prod)) {
@@ -276,9 +302,9 @@ grid?.addEventListener('click', (e)=>{
   if (!prod) return;
 
   if (hasVariants(prod)) {
-    // Si hay solo UNA variante con stock, la agrego directo; sino abrir modal
-    const avail = (prod.variants || []).filter(v => (v.stock ?? 0) > 0);
-    if (avail.length === 1) {
+    // Agrega la PRIMERA variante con stock (si stock viene vacío, la considera disponible)
+    const avail = (prod.variants || []).filter(v => Number((v.stock ?? 1)) > 0);
+    if (avail.length >= 1) {
       const v = avail[0];
       addToCart({
         id: String(v.id),
@@ -310,79 +336,123 @@ grid?.addEventListener('click', (e)=>{
   setTimeout(()=>{ b.disabled=false; b.textContent=old; }, 900);
 });
 
-/* ========= Carrito ========= */
-const CART_KEY = 'cart:tienda';
-const loadCart = () => JSON.parse(localStorage.getItem(CART_KEY) || '[]');
-const saveCart = (x) => localStorage.setItem(CART_KEY, JSON.stringify(x));
-const updateBagCount = () => bagCnt && (bagCnt.textContent = loadCart().reduce((a,it)=>a+(it.qty||0),0));
-
+/* ========= API carrito ========= */
 function addToCart(item){
   const cart = loadCart();
-  const i = cart.findIndex(x => x.id === item.id);
-  if (i >= 0) cart[i].qty += item.qty || 1;
-  else cart.push({...item, qty: item.qty || 1});
+  const i = cart.findIndex(x => String(x.id) === String(item.id));
+  if (i >= 0) cart[i].qty = Number(cart[i].qty || 0) + Number(item.qty || 1);
+  else cart.push({ ...item, qty: Number(item.qty || 1) });
   saveCart(cart);
   updateBagCount();
 }
 
-/* mini-carrito simple */
-bagBtn?.addEventListener('click', ()=>{
+/* ========= Mini-carrito (modal) ========= */
+function renderMiniCart() {
   const cart = loadCart();
-  if (!cart.length) {
-    cartList.innerHTML = '<div class="text-center text-gray-500 py-8">Tu carrito está vacío.</div>';
+  console.log('[mini-cart] lee', cart);
+
+  if (!cart || cart.length === 0) {
+    cartList.innerHTML = '<div class="empty">Tu carrito está vacío.</div>';
     cartTotal.textContent = money(0);
-  } else {
-    cartList.innerHTML = cart.map(it=>`
-      <div class="py-3 flex items-center gap-3">
-        <img src="${it.img}" class="cart-thumb" alt="">
-        <div class="flex-1 min-w-0">
-          <p class="cart-name truncate">${it.name}</p>
-          <p class="cart-price">${money(it.price)}</p>
-        </div>
-        <span>x${it.qty||1}</span>
-      </div>`).join('');
-    const total = cart.reduce((a,it)=>a+(it.price||0)*(it.qty||1),0);
-    cartTotal.textContent = money(total);
-  }
-  cartDlg?.showModal?.();
-});
-
-clearCartBtn?.addEventListener('click', ()=>{
-  saveCart([]); updateBagCount();
-  cartList.innerHTML = '<div class="text-center text-gray-500 py-8">Tu carrito está vacío.</div>';
-  cartTotal.textContent = money(0);
-});
-
-/* ===== Finalizar compra (requiere login) ===== */
-checkoutBtn?.addEventListener('click', async () => {
-  const cart = loadCart();
-  if (!cart.length) { alert('Tu carrito está vacío'); return; }
-
-  const faltan = cart.filter(it => !it.variant_id);
-  if (faltan.length){
-    alert('Falta elegir talle/color en:\n\n' + faltan.map(i => '• ' + i.name).join('\n'));
     return;
   }
 
-  // ¿Está logueado?
-  let me = null;
+  cartList.innerHTML = cart.map(it => `
+    <div class="py-3 flex items-center gap-3">
+      <img src="${it?.img || ''}" class="cart-thumb" alt="">
+      <div class="flex-1 min-w-0">
+        <p class="cart-name truncate">${it?.name || ''}</p>
+        <p class="cart-price">${money(it?.price)}</p>
+      </div>
+      <span>x${Number(it?.qty || 1)}</span>
+    </div>
+  `).join('');
+
+  const total = cart.reduce((a, it) => a + Number(it?.price || 0) * Number(it?.qty || 1), 0);
+  cartTotal.textContent = money(total);
+}
+
+function openMiniCart() {
+  renderMiniCart();
+  if (cartDlg?.showModal) cartDlg.showModal();
+  else { cartDlg?.setAttribute('open',''); document.documentElement.classList.add('modal-open'); }
+}
+
+bagBtn?.addEventListener('click', openMiniCart);
+
+clearCartBtn?.addEventListener('click', () => {
+  saveCart([]);
+  updateBagCount();
+  renderMiniCart();
+});
+
+/* ========= Checkout robusto: leer texto y luego intentar JSON ========= */
+async function finalizarCompra(payload) {
+  // payload: { email, items: [{ variant_id, qty }, ...] }
+  const res = await fetch(CHECKOUT_API, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+
+  const txt = await res.text(); // siempre leer texto
+  let data;
   try {
-    const r = await fetch('api/me.php', { cache: 'no-store' });
-    me = await r.json();
-  } catch {}
+    data = JSON.parse(txt);
+  } catch (e) {
+    console.error('Respuesta no-JSON del servidor:', txt);
+    alert('El servidor no devolvió JSON.\n\nRespuesta:\n' + txt.slice(0, 800));
+    throw e;
+  }
 
-  if (!me?.ok || !me?.customer?.id) {
-    // no logueado → al login y volvemos a checkout
-    const next = encodeURIComponent('checkout.php');
-    window.location.href = `cliente_login.php?next=${next}`;
+  if (!data.ok) {
+    alert(data.error || 'Error al finalizar la compra.');
+    return null;
+  }
+
+  return data; // { ok:true, order_id, status }
+}
+
+/* ======= Handler del botón "Finalizar compra" ======= */
+document.getElementById('btnCheckout')?.addEventListener('click', async () => {
+  const cart = loadCart();
+  if (!cart || cart.length === 0) {
+    alert('Tu carrito está vacío.');
     return;
   }
 
-  // logueado → vamos a la página checkout (form + envío a api/checkout.php)
-  window.location.href = 'checkout.php';
+  // Reemplazá por cómo obtenés el email en tu UI
+  const email = (window.userEmail || document.getElementById('emailCheckout')?.value || '').trim();
+  if (!email) {
+    alert('Ingresá tu email antes de finalizar la compra.');
+    return;
+  }
+
+  // Mapeo del carrito → payload del checkout
+  const items = cart.map(it => ({
+    variant_id: Number(it.variant_id || it.id),
+    qty: Number(it.qty || 1)
+  }));
+
+  try {
+    const resp = await finalizarCompra({ email, items });
+    if (!resp) return;
+
+    alert('¡Pedido creado! N° ' + resp.order_id);
+    saveCart([]);          // vaciar carrito
+    updateBagCount();
+    renderMiniCart();
+    cartDlg?.close?.();
+    // location.href = 'gracias.html?order=' + resp.order_id; // opcional
+  } catch (err) {
+    console.error(err);
+  }
 });
 
-/* ========= FIX: Dropdown (menú Mujer) siempre pegado al botón ========= */
+/* init */
+updateBagCount();
+
+/* ========= FIX: Dropdown (menú Mujer) pegado al botón ========= */
 (function(){
   const dd = menu; 
   if (!dd) return;
@@ -394,7 +464,6 @@ checkoutBtn?.addEventListener('click', async () => {
     ddPanel.style.position  = 'fixed';
     ddPanel.style.zIndex    = '20000';
 
-    // mostrar temporalmente para medir
     const prevDisplay = ddPanel.style.display;
     const prevVis     = ddPanel.style.visibility;
     ddPanel.style.visibility = 'hidden';
@@ -405,10 +474,7 @@ checkoutBtn?.addEventListener('click', async () => {
     const pw = ddPanel.offsetWidth;
     const m = 8;
 
-    // X clamp
     let left = Math.min(Math.max(m, r.left), window.innerWidth - pw - m);
-
-    // Y: abajo por defecto; si no entra, arriba
     let top = r.bottom + m;
     if (top + ph + m > window.innerHeight) top = r.top - ph - m;
     top = Math.min(Math.max(m, top), window.innerHeight - ph - m);
@@ -432,7 +498,6 @@ checkoutBtn?.addEventListener('click', async () => {
 
   dd.addEventListener('toggle', () => { if (dd.open) onOpen(); else onClose(); });
 
-  // Cerrar al click afuera / Escape
   document.addEventListener('click', (e) => { if (dd.open && !dd.contains(e.target)) dd.removeAttribute('open'); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && dd.open) dd.removeAttribute('open'); });
 })();

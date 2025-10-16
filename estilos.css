@@ -1,6 +1,6 @@
 :root { color-scheme: light dark; }
 * { box-sizing: border-box; }
-body { margin: 0; background:#1f262c; }
+body { margin: 0; background:#a1a098; }
 
 .container{ max-width:1200px; margin:0 auto; padding:0 16px; }
 
@@ -19,7 +19,7 @@ body { margin: 0; background:#1f262c; }
 }
 .logo{
   justify-self:center; font-size:56px; line-height:1;
-  font-family:Verdana, Geneva, Tahoma, sans-serif; color:#7d3d36;
+  font-family:"Lustria", serif; color:#7d3d36;
   text-decoration:none; letter-spacing:.04em;
 }
 .links{ display:flex; gap:20px; align-items:center; position: relative; }
@@ -71,7 +71,7 @@ body { margin: 0; background:#1f262c; }
 }
 .icon-btn .badge{
   position:absolute; top:-6px; right:-6px; min-width:18px; height:18px; padding:0 6px;
-  display:grid; place-items:center; background:#000; color:#fff; border-radius:999px; font-size:11px; line-height:1;
+  display:grid; place-items:center; background:#000; color:#ffffff; border-radius:999px; font-size:11px; line-height:1;
 }
 
 /* ====================== Carrusel ====================== */
@@ -166,3 +166,102 @@ body { margin: 0; background:#1f262c; }
   text-decoration: none;
   color: inherit;
 }
+.pie{
+    background-color: #413f3f;
+}
+/* ====== CONTRASTE MÁS ALTO (pegá esto al final de tu CSS) ====== */
+
+/* Modal (detalle y carrito) más oscuro */
+.modal .modal-box{
+  background:#e1dada !important;     /* fondo oscuro */
+  color:#000000 !important;
+  border:1px solid #243044;
+}
+
+/* El contenido del mini-carrito (tenía bg blanco) */
+#cartItems{ background:#0f172a !important; color:#e5e7eb !important; }
+[class*="bg-white"]{ background:#101826 !important; color:#e5e7eb !important; } /* footer del mini-carrito */
+
+/* Etiquetas de la ficha (Color / Talles) un poco más visibles */
+.pd-label{ color:#000000; }
+
+/* Botón “Agregar al carrito” (activo / deshabilitado) */
+#pdAdd{ background:#7a4545 !important; border:none; color:#fff; }
+#pdAdd:disabled{
+  background:#7a4545 !important;
+  color:#ffffff !important;
+  opacity:1 !important;       /* que no quede lavado */
+  cursor:not-allowed;
+}
+
+/* Pills de color (chip) — más oscuras */
+.color-chip{
+  background:#ffffff;                 /* antes #fff */
+  border:1px solid #334155;           /* antes #e5e7eb */
+  color:#000000;
+}
+.color-chip:hover{ background:#d5a0a0; }
+.color-chip .dot{ border-color:#475569; }
+
+/* Pills de talle — más oscuras */
+.size-btn{
+  background:#fffdfd;                 /* antes #fff */
+  border:1px solid #334155;           /* antes #e5e7eb */
+  color:#000000;
+}
+.size-btn:hover{ background:#d5a0a0; }
+
+/* Estado seleccionado (tu JS ya agrega .is-selected) */
+.color-chip.is-selected,
+.size-btn.is-selected{
+  background:#a25656;                 /* azul sólido para contraste */
+  border-color:#a25656;
+  color:#fff;
+  box-shadow:0 0 0 2px #1d4ed833 inset;
+}
+
+/* Focus visible para accesibilidad */
+.color-chip:focus-visible,
+.size-btn:focus-visible,
+#pdAdd:focus-visible{
+  outline:2px solid #f59e0b;
+  outline-offset:2px;
+}
+/* ---- Carrito visual ---- */
+:root{
+  --accent:   #7a4545;
+  --accent-2: #9b8681;
+  --panel:    #f7f9fc;
+  --panel-br: #e5e7ef;
+  --ink:      #0f172a;
+}
+
+#cartDlg .modal-box{ background:var(--panel); color:var(--ink); }
+#cartDlg .cart-header{
+  background: linear-gradient(90deg, #c7c1c1, #bd7e7e);
+  color:#fff;
+}
+#cartDlg .divide-y > *{ border-color:#e5e7eb !important; }
+#cartDlg .cart-name{ font-weight:600; }
+#cartDlg .cart-price{ opacity:.85; font-size:.875rem; }
+#cartDlg .cart-thumb{ width:56px; height:56px; object-fit:cover; border-radius:.5rem; }
+
+/* botones */
+.btn.btn-primary, .btn-primary{
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)) !important;
+  border:0 !important; color:#fff !important; border-radius:12px;
+}
+.btn.btn-primary:hover, .btn-primary:hover{ filter:brightness(1.03); }
+#cartDlg .btn-ghost{
+  border:1px solid rgba(15,23,42,.08) !important;
+  color:var(--ink) !important; background:transparent !important;
+}
+#cartDlg .btn-ghost:hover{ background:rgba(15,23,42,.06) !important; }
+
+/* estado vacío */
+.empty{ color:#64748b; text-align:center; padding:2rem 0; }
+
+/* por si algo tapa el modal */
+dialog.modal[open]{ display:block !important; }
+dialog.modal::backdrop{ background:rgba(0,0,0,.55); }
+.modal{ z-index:9999 !important; }
